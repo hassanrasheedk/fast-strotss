@@ -95,7 +95,6 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
             feat_e = extractor.forward_samples_hypercolumn(style, samps=1000)
             feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
     # feat_style.requires_grad_(False)
-    regions = np_to_tensor(regions)
 
     for ri in range(len(regions[0])):
         r_temp = regions[0][ri]
@@ -134,6 +133,7 @@ def strotss(content_pil, style_pil, content_path, style_path, regions, coords, c
     style_np = pil_to_np(style_pil)
     content_full = np_to_tensor(content_np, space).to(device)
     style_full = np_to_tensor(style_np, space).to(device)
+    regions = np_to_tensor(regions, space).to(device)
 
     if content_mask is not None and style_mask is not None:
         content_mask = content_mask.to(device)
