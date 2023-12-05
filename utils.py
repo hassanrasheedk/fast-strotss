@@ -87,9 +87,9 @@ def sample_indices(feat_content, feat_style_all, r, ri):
     indices = None
     const = 128**2 # 32k or so
 
-    # feat_style =  feat_style_all[ri]
+    feat_style =  feat_style_all[ri]
 
-    # feat_dims = feat_style.shape[1]
+    feat_dims = feat_style.shape[1]
     big_size = feat_content.shape[2] * feat_content.shape[3] # num feaxels
 
     stride_x = int(max(math.floor(math.sqrt(big_size//const)),1))

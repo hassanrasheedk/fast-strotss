@@ -162,6 +162,10 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         with torch.no_grad():
             feat_e = load_style_folder(extractor, style, regions, ri, n_samps=1, subsamps=1000, inner=5)        
             feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
+    if feat_style:
+        feat_style = torch.cat(feat_style, dim=2)
+    else:
+        feat_style = torch.tensor([])
 
     for ri in range(len(regions[0])):
         r_temp = regions[0][ri]
