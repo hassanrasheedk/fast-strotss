@@ -82,6 +82,7 @@ def fold_laplace_pyramid(pyramid):
     return current
 
 def sample_indices(feat_content, feat_style_all, r, ri):
+
     indices = None
     const = 128**2 # 32k or so
 
@@ -99,7 +100,6 @@ def sample_indices(feat_content, feat_style_all, r, ri):
     xx = np.expand_dims(xx.flatten(),1)
     xy = np.expand_dims(xy.flatten(),1)
     xc = np.concatenate([xx,xy], 1)
-    # xc = np.concatenate([xx,xy],1)
 
     region_mask = r
 
@@ -114,11 +114,8 @@ def sample_indices(feat_content, feat_style_all, r, ri):
     except:
         region_mask = region_mask[:,:]
         xc = xc[region_mask[xy[:,0],xx[:,0]], :]
-
-    xx[ri].append(xc[:,0])
-    xy[ri].append(xc[:,1])
     
-    return xx, xy
+    return xc[:,0], xc[:,1]
     
 def get_guidance_indices(feat_result, coords):
 

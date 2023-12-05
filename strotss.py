@@ -106,7 +106,13 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         else:
             r = np.greater(r,0.5)
 
-        xx, xy = sample_indices(feat_content[0], feat_style, r, ri) # 0 to sample over first layer extracted
+        xx = {}
+        xy = {}
+
+        xx_arr, xy_arr = sample_indices(feat_content[0], feat_style, xx, xy, r, ri) # 0 to sample over first layer extracted
+        
+        xx[ri].append(xx_arr)
+        xy[ri].append(xy_arr)
 
     # init indices to optimize over
     # xx, xy = sample_indices(feat_content[0], feat_style) # 0 to sample over first layer extracted
@@ -118,8 +124,9 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         # ...
         # also shuffle them every y iter
         if it % 1 == 0 and it != 0:
-            np.random.shuffle(xx)
-            np.random.shuffle(xy)
+            for ri in xx.keys():
+                np.random.shuffle(xx[ri])
+                np.random.shuffle(xy[ri])
         feat_result = extractor(stylized)
 
         loss = calculate_loss(feat_result, feat_content, feat_style, feat_guidance, [xx, xy], content_weight, regions)
