@@ -157,7 +157,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     #         feat_e = extractor.forward_samples_hypercolumn(style, samps=1000)
     #         feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
     # feat_style.requires_grad_(False)
-    feat_style = []
+    feat_style = None
     for ri in range(len(regions[1])):
         with torch.no_grad():
             feat_e = load_style_folder(extractor, style, regions, ri, n_samps=1, subsamps=1000, inner=5)        
