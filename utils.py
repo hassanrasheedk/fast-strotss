@@ -241,9 +241,9 @@ def extract_regions(content_path, style_path):
 def load_style_guidance(extractor,path,coords_t,scale,device="cuda:0"):
 
     style_pil = pil_loader(path)
+    style_pil = pil_resize_long_edge_to(style_pil, scale)
     style_np = pil_to_np(style_pil)
     style_im = np_to_tensor(style_np).to(device)
-    style_im = pil_resize_long_edge_to(scale)
 
     coords = coords_t.copy()
     coords[:,0]=coords[:,0]*style_im.size(2)

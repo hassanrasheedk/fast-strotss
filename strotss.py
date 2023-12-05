@@ -95,9 +95,9 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
             feat_e = extractor.forward_samples_hypercolumn(style, samps=1000)
             feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
     # feat_style.requires_grad_(False)
-    for ri in range(len(regions[0])):
-        
+    regions = np_to_tensor(regions)
 
+    for ri in range(len(regions[0])):
         r_temp = regions[0][ri]
         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
         r = F.interpolate(r_temp,(stylized.size(3),stylized.size(2)),mode='bilinear', align_corners=False)[0,0,:,:].numpy()        
@@ -218,9 +218,9 @@ if __name__ == "__main__":
         style_mask = create_mask_from_image(args.style_mask)
     else:
         try:
-            regions = [[imread(args.content)[:,:,0]*0.+1.], [imread(args.style)[:,:,0]*0.+1.]]
+            regions = [[pil_to_np(pil_resize_long_edge_to(pil_loader(args.content), args.resize_to))[:,:,0]*0.+1.], [pil_to_np(pil_resize_long_edge_to(pil_loader(args.style), args.resize_to))[:,:,0]*0.+1.]]
         except:
-            regions = [[imread(args.content)[:,:]*0.+1.], [imread(args.style)[:,:]*0.+1.]]
+            regions = [[pil_to_np(pil_resize_long_edge_to(pil_loader(args.content), args.resize_to))[:,:]*0.+1.], [pil_to_np(pil_resize_long_edge_to(pil_loader(args.style), args.resize_to))[:,:]*0.+1.]]
     
     content_weight = args.weight * 16.0
 
