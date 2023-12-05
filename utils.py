@@ -11,6 +11,7 @@ import os
 import math
 import PIL
 
+use_random=True
 # Tensor and PIL utils
 
 def pil_loader(path):
