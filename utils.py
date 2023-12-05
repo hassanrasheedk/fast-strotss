@@ -101,13 +101,13 @@ def sample_indices(feat_content, feat_style_all, r, ri):
     xc = np.concatenate([xx,xy])
     # xc = np.concatenate([xx,xy],1)
 
+    region_mask = r
+
     # Debugging the shapes
     print(f"Shape of region_mask: {region_mask.shape}")
     print(f"Shape of xx: {xx.shape}")
     print(f"Shape of xy: {xy.shape}")
     print(f"Shape of xc: {xc.shape}")
-
-    region_mask = r
 
     try:
         xc = xc[region_mask[xy[:],xx[:]]]
