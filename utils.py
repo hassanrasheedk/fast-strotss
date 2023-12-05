@@ -98,7 +98,8 @@ def sample_indices(feat_content, feat_style_all, r, ri):
 
     xx = xx.flatten()
     xy = xy.flatten()
-    xc = np.concatenate([xx,xy],1)
+    xc = np.concatenate([xx,xy])
+    # xc = np.concatenate([xx,xy],1)
 
     region_mask = r
 
