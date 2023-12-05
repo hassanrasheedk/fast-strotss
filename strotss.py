@@ -202,6 +202,7 @@ if __name__ == "__main__":
     use_guidance = False
     coords=0.
     content_pil, style_pil = pil_loader(args.content), pil_loader(args.style)
+    content_mask, style_mask = None, None
 
     if args.content_mask and args.style_mask is not None:
         use_guidance = True
