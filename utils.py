@@ -104,10 +104,10 @@ def sample_indices(feat_content, feat_style_all, r, ri):
     region_mask = r
 
     try:
-        xc = xc[region_mask[xy[:],xx[:]],:]
+        xc = xc[region_mask[xy[:],xx[:]]]
     except:
         region_mask = region_mask[:,:]
-        xc = xc[region_mask[xy[:],xx[:]],:]
+        xc = xc[region_mask[xy[:],xx[:]]]
 
     xx[ri].append(xc[:])
     xy[ri].append(xc[:])
