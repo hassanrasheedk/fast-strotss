@@ -335,7 +335,7 @@ def load_style_folder(extractor, style_im, regions, ri, n_samps=-1,subsamps=-1,s
         with torch.no_grad():
             zt = extractor.forward_cat(style_im,r,samps=subsamps)
             
-        zt = [li.view(li.size(0),li.size(1),-1,1) for li in zt]
+        # zt = [li.view(li.size(0),li.size(1),-1,1) for li in zt]
 
         # if len(z) == 0:
         #     z = zt
