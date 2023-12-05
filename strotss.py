@@ -109,7 +109,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         xx = {}
         xy = {}
 
-        xx_arr, xy_arr = sample_indices(feat_content[0], feat_style, xx, xy, r, ri) # 0 to sample over first layer extracted
+        xx_arr, xy_arr = sample_indices(feat_content[0], feat_style, r, ri) # 0 to sample over first layer extracted
         
         xx[ri].append(xx_arr)
         xy[ri].append(xy_arr)
