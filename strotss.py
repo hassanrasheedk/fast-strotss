@@ -1,12 +1,15 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.models as models
+import torchvision.transforms as transforms
 import numpy as np
+import os
+import math
+import PIL
 from time import time
 from argparse import ArgumentParser
-from utils import *
-from loss_functions import *
 
 class Vgg16_Extractor(nn.Module):
     def __init__(self, space):
@@ -66,7 +69,266 @@ class Vgg16_Extractor(nn.Module):
         feat = torch.cat(feat_samples,1)
         return feat
     
-def optimize(result, content, style, content_path, style_path, scale, content_weight, lr, extractor, coords=0, use_guidance=False, regions=0):
+# Tensor and PIL utils
+
+def pil_loader(path):
+    with open(path, 'rb') as f:
+        img = PIL.Image.open(f)
+        return img.convert('RGB')
+
+def tensor_resample(tensor, dst_size, mode='bilinear'):
+    return F.interpolate(tensor, dst_size, mode=mode, align_corners=False)
+
+def pil_resize_short_edge_to(pil, trg_size):
+    short_w = pil.width < pil.height
+    ar_resized_short = (trg_size / pil.width) if short_w else (trg_size / pil.height)
+    resized = pil.resize((int(pil.width * ar_resized_short), int(pil.height * ar_resized_short)), PIL.Image.BICUBIC)
+    return resized
+
+def pil_resize_long_edge_to(pil, trg_size):
+    short_w = pil.width < pil.height
+    ar_resized_long = (trg_size / pil.height) if short_w else (trg_size / pil.width)
+    resized = pil.resize((int(pil.width * ar_resized_long), int(pil.height * ar_resized_long)), PIL.Image.BICUBIC)
+    return resized
+
+def np_to_pil(npy):
+    return PIL.Image.fromarray(npy.astype(np.uint8))
+
+def pil_to_np(pil):
+    return np.array(pil)
+
+def tensor_to_np(tensor, cut_dim_to_3=True):
+    if len(tensor.shape) == 4:
+        if cut_dim_to_3:
+            tensor = tensor[0]
+        else:
+            return tensor.data.cpu().numpy().transpose((0, 2, 3, 1))
+    return tensor.data.cpu().numpy().transpose((1,2,0))
+
+def np_to_tensor(npy, space):
+    if space == 'vgg':
+        return np_to_tensor_correct(npy)
+    return (torch.Tensor(npy.astype(np.float) / 127.5) - 1.0).permute((2,0,1)).unsqueeze(0)
+
+def np_to_tensor_correct(npy):
+    pil = np_to_pil(npy)
+    transform = transforms.Compose([transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    return transform(pil).unsqueeze(0)
+
+# Laplacian Pyramid
+
+def laplacian(x):
+    # x - upsample(downsample(x))
+    return x - tensor_resample(tensor_resample(x, [x.shape[2] // 2, x.shape[3] // 2]), [x.shape[2], x.shape[3]])
+
+def make_laplace_pyramid(x, levels):
+    pyramid = []
+    current = x
+    for i in range(levels):
+        pyramid.append(laplacian(current))
+        current = tensor_resample(current, (max(current.shape[2] // 2,1), max(current.shape[3] // 2,1)))
+    pyramid.append(current)
+    return pyramid
+
+def fold_laplace_pyramid(pyramid):
+    current = pyramid[-1]
+    for i in range(len(pyramid)-2, -1, -1): # iterate from len-2 to 0
+        up_h, up_w = pyramid[i].shape[2], pyramid[i].shape[3]
+        current = pyramid[i] + tensor_resample(current, (up_h,up_w))
+    return current
+
+def sample_indices(feat_content, feat_style):
+    indices = None
+    const = 128**2 # 32k or so
+    feat_dims = feat_style.shape[1]
+    big_size = feat_content.shape[2] * feat_content.shape[3] # num feaxels
+
+    stride_x = int(max(math.floor(math.sqrt(big_size//const)),1))
+    offset_x = np.random.randint(stride_x)
+    stride_y = int(max(math.ceil(math.sqrt(big_size//const)),1))
+    offset_y = np.random.randint(stride_y)
+    xx, xy = np.meshgrid(np.arange(feat_content.shape[2])[offset_x::stride_x], np.arange(feat_content.shape[3])[offset_y::stride_y] )
+
+    xx = xx.flatten()
+    xy = xy.flatten()
+    return xx, xy
+
+def spatial_feature_extract(feat_result, feat_content, xx, xy):
+    l2, l3 = [], []
+    device = feat_result[0].device
+
+    # for each extracted layer
+    for i in range(len(feat_result)):
+        fr = feat_result[i]
+        fc = feat_content[i]
+
+        # hack to detect reduced scale
+        if i>0 and feat_result[i-1].size(2) > feat_result[i].size(2):
+            xx = xx/2.0
+            xy = xy/2.0
+
+        # go back to ints and get residual
+        xxm = np.floor(xx).astype(np.float32)
+        xxr = xx - xxm
+
+        xym = np.floor(xy).astype(np.float32)
+        xyr = xy - xym
+
+        # do bilinear resample
+        w00 = torch.from_numpy((1.-xxr)*(1.-xyr)).float().view(1, 1, -1, 1).to(device)
+        w01 = torch.from_numpy((1.-xxr)*xyr).float().view(1, 1, -1, 1).to(device)
+        w10 = torch.from_numpy(xxr*(1.-xyr)).float().view(1, 1, -1, 1).to(device)
+        w11 = torch.from_numpy(xxr*xyr).float().view(1, 1, -1, 1).to(device)
+
+        xxm = np.clip(xxm.astype(np.int32),0,fr.size(2)-1)
+        xym = np.clip(xym.astype(np.int32),0,fr.size(3)-1)
+
+        s00 = xxm*fr.size(3)+xym
+        s01 = xxm*fr.size(3)+np.clip(xym+1,0,fr.size(3)-1)
+        s10 = np.clip(xxm+1,0,fr.size(2)-1)*fr.size(3)+(xym)
+        s11 = np.clip(xxm+1,0,fr.size(2)-1)*fr.size(3)+np.clip(xym+1,0,fr.size(3)-1)
+
+        fr = fr.view(1,fr.size(1),fr.size(2)*fr.size(3),1)
+        fr = fr[:,:,s00,:].mul_(w00).add_(fr[:,:,s01,:].mul_(w01)).add_(fr[:,:,s10,:].mul_(w10)).add_(fr[:,:,s11,:].mul_(w11))
+
+        fc = fc.view(1,fc.size(1),fc.size(2)*fc.size(3),1)
+        fc = fc[:,:,s00,:].mul_(w00).add_(fc[:,:,s01,:].mul_(w01)).add_(fc[:,:,s10,:].mul_(w10)).add_(fc[:,:,s11,:].mul_(w11))
+
+        l2.append(fr)
+        l3.append(fc)
+
+    x_st = torch.cat([li.contiguous() for li in l2],1)
+    c_st = torch.cat([li.contiguous() for li in l3],1)
+
+    xx = torch.from_numpy(xx).view(1,1,x_st.size(2),1).float().to(device)
+    yy = torch.from_numpy(xy).view(1,1,x_st.size(2),1).float().to(device)
+    
+    x_st = torch.cat([x_st,xx,yy],1)
+    c_st = torch.cat([c_st,xx,yy],1)
+    return x_st, c_st
+
+def pairwise_distances_cos(x, y):
+    x_norm = torch.sqrt((x**2).sum(1).view(-1, 1))
+    y_t = torch.transpose(y, 0, 1)
+    y_norm = torch.sqrt((y**2).sum(1).view(1, -1))
+    dist = 1.-torch.mm(x, y_t)/x_norm/y_norm
+    return dist
+
+def pairwise_distances_sq_l2(x, y):
+    x_norm = (x**2).sum(1).view(-1, 1)
+    y_t = torch.transpose(y, 0, 1)
+    y_norm = (y**2).sum(1).view(1, -1)
+    dist = x_norm + y_norm - 2.0 * torch.mm(x, y_t)
+    return torch.clamp(dist, 1e-5, 1e5)/x.size(1)
+
+def distmat(x, y, cos_d=True):
+    if cos_d:
+        M = pairwise_distances_cos(x, y)
+    else:
+        M = torch.sqrt(pairwise_distances_sq_l2(x, y))
+    return M
+
+def content_loss(feat_result, feat_content):
+    d = feat_result.size(1)
+
+    X = feat_result.transpose(0,1).contiguous().view(d,-1).transpose(0,1)
+    Y = feat_content.transpose(0,1).contiguous().view(d,-1).transpose(0,1)
+
+    Y = Y[:,:-2]
+    X = X[:,:-2]
+    # X = X.t()
+    # Y = Y.t()
+
+    Mx = distmat(X, X)
+    Mx = Mx#/Mx.sum(0, keepdim=True)
+
+    My = distmat(Y, Y)
+    My = My#/My.sum(0, keepdim=True)
+
+    d = torch.abs(Mx-My).mean()# * X.shape[0]
+    return d
+
+def rgb_to_yuv(rgb):
+    C = torch.Tensor([[0.577350,0.577350,0.577350],[-0.577350,0.788675,-0.211325],[-0.577350,-0.211325,0.788675]]).to(rgb.device)
+    yuv = torch.mm(C,rgb)
+    return yuv
+
+def style_loss(X, Y, cos_d=True):
+    d = X.shape[1]
+
+    if d == 3:
+        X = rgb_to_yuv(X.transpose(0,1).contiguous().view(d,-1)).transpose(0,1)
+        Y = rgb_to_yuv(Y.transpose(0,1).contiguous().view(d,-1)).transpose(0,1)
+    else:
+        X = X.transpose(0,1).contiguous().view(d,-1).transpose(0,1)
+        Y = Y.transpose(0,1).contiguous().view(d,-1).transpose(0,1)
+
+    # Relaxed EMD
+    CX_M = distmat(X, Y, cos_d=True)
+
+    if d==3: CX_M = CX_M + distmat(X, Y, cos_d=False)
+
+    m1, m1_inds = CX_M.min(1)
+    m2, m2_inds = CX_M.min(0)
+
+    remd = torch.max(m1.mean(), m2.mean())
+
+    return remd
+
+def moment_loss(X, Y, moments=[1,2]):
+    loss = 0.
+    X = X.squeeze().t()
+    Y = Y.squeeze().t()
+
+    mu_x = torch.mean(X, 0, keepdim=True)
+    mu_y = torch.mean(Y, 0, keepdim=True)
+    mu_d = torch.abs(mu_x - mu_y).mean()
+
+    if 1 in moments:
+        # print(mu_x.shape)
+        loss = loss + mu_d
+
+    if 2 in moments:
+        X_c = X - mu_x
+        Y_c = Y - mu_y
+        X_cov = torch.mm(X_c.t(), X_c) / (X.shape[0] - 1)
+        Y_cov = torch.mm(Y_c.t(), Y_c) / (Y.shape[0] - 1)
+
+        # print(X_cov.shape)
+        # exit(1)
+
+        D_cov = torch.abs(X_cov - Y_cov).mean()
+        loss = loss + D_cov
+
+    return loss
+
+def calculate_loss(feat_result, feat_content, feat_style, indices, content_weight, moment_weight=1.0):
+    # spatial feature extract
+    num_locations = 1024
+    spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, indices[0][:num_locations], indices[1][:num_locations])
+    loss_content = content_loss(spatial_result, spatial_content)
+
+    d = feat_style.shape[1]
+    spatial_style = feat_style.view(1, d, -1, 1)
+    feat_max = 3+2*64+128*2+256*3+512*2 # (sum of all extracted channels)
+
+    loss_remd = style_loss(spatial_result[:, :feat_max, :, :], spatial_style[:, :feat_max, :, :])
+
+    loss_moment = moment_loss(spatial_result[:,:-2,:,:], spatial_style, moments=[1,2]) # -2 is so that it can fit?
+    # palette matching
+    content_weight_frac = 1./max(content_weight,1.)
+    loss_moment += content_weight_frac * style_loss(spatial_result[:,:3,:,:], spatial_style[:,:3,:,:])
+    
+    loss_style = loss_remd + moment_weight * loss_moment
+    # print(f'Style: {loss_style.item():.3f}, Content: {loss_content.item():.3f}')
+
+    style_weight = 1.0 + moment_weight
+    loss_total = (content_weight * loss_content + loss_style) / (content_weight + style_weight)
+    return loss_total
+
+def optimize(result, content, style, scale, content_weight, lr, extractor):
     # torch.autograd.set_detect_anomaly(True)
     result_pyramid = make_laplace_pyramid(result, 5)
     result_pyramid = [l.data.requires_grad_() for l in result_pyramid]
@@ -83,10 +345,6 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
 
     stylized = fold_laplace_pyramid(result_pyramid)
     # let's ignore the regions for now
-    ### Extract guidance features if required ###
-    feat_guidance = np.array([0.])
-    if use_guidance:
-        feat_guidance = load_style_guidance(extractor, style_path, coords[:,2:], scale)
     # some inner loop that extracts samples
     feat_style = None
     for i in range(5):
@@ -96,32 +354,8 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
             feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
     # feat_style.requires_grad_(False)
 
-    for ri in range(len(regions[0])):
-        r_temp = regions[0][ri]
-        r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
-        r = F.interpolate(r_temp,(stylized.size(3),stylized.size(2)),mode='bilinear', align_corners=False)[0,0,:,:].numpy()        
-
-        if r.max()<0.1:
-            r = np.greater(r+1.,0.5)
-        else:
-            r = np.greater(r,0.5)
-
-        xx = {}
-        xy = {}
-
-        xx_arr, xy_arr = sample_indices(feat_content[0], feat_style, r, ri) # 0 to sample over first layer extracted
-        
-        try:
-            temp = xx[ri]
-        except:
-            xx[ri] = []
-            xy[ri] = []
-
-        xx[ri].append(xx_arr)
-        xy[ri].append(xy_arr)
-
     # init indices to optimize over
-    # xx, xy = sample_indices(feat_content[0], feat_style) # 0 to sample over first layer extracted
+    xx, xy = sample_indices(feat_content[0], feat_style) # 0 to sample over first layer extracted
     for it in range(opt_iter):
         optimizer.zero_grad()
 
@@ -130,27 +364,21 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         # ...
         # also shuffle them every y iter
         if it % 1 == 0 and it != 0:
-            for ri in xx.keys():
-                np.random.shuffle(xx[ri])
-                np.random.shuffle(xy[ri])
-
+            np.random.shuffle(xx)
+            np.random.shuffle(xy)
         feat_result = extractor(stylized)
 
-        loss = calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx, xy, content_weight, regions)
+        loss = calculate_loss(feat_result, feat_content, feat_style, [xx, xy], content_weight)
         loss.backward()
         optimizer.step()
     return stylized
 
 
-def strotss(content_pil, style_pil, content_path, style_path, regions, coords, content_weight=1.0*16.0, device='cuda:0', space='uniform', use_guidance=False, content_mask=None, style_mask=None):
+def strotss(content_pil, style_pil, content_weight=1.0*16.0, device='cuda:0', space='uniform'):
     content_np = pil_to_np(content_pil)
     style_np = pil_to_np(style_pil)
     content_full = np_to_tensor(content_np, space).to(device)
     style_full = np_to_tensor(style_np, space).to(device)
-
-    if content_mask is not None and style_mask is not None:
-        content_mask = content_mask.to(device)
-        style_mask = style_mask.to(device)
 
     lr = 2e-3
     extractor = Vgg16_Extractor(space=space).to(device)
@@ -180,7 +408,7 @@ def strotss(content_pil, style_pil, content_path, style_path, regions, coords, c
             result = tensor_resample(result, [content.shape[2], content.shape[3]]) + laplacian(content)
 
         # do the optimization on this scale
-        result = optimize(result, content, style, content_path, style_path, scale, content_weight=content_weight, lr=lr, extractor=extractor, coords=coords, use_guidance=use_guidance, regions=regions)
+        result = optimize(result, content, style, scale, content_weight=content_weight, lr=lr, extractor=extractor)
 
         # next scale lower weight
         content_weight /= 2.0
@@ -197,8 +425,6 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("content", type=str)
     parser.add_argument("style", type=str)
-    parser.add_argument("--content_mask", type=str, default=None)
-    parser.add_argument("--style_mask", type=str, default=None)
     parser.add_argument("--weight", type=float, default=1.0)
     parser.add_argument("--output", type=str, default="strotss.png")
     parser.add_argument("--device", type=str, default="cuda:0")
@@ -212,38 +438,13 @@ if __name__ == "__main__":
         print("Resulution too low.")
         exit(1)
 
-    use_guidance = False
-    coords=0.
     content_pil, style_pil = pil_loader(args.content), pil_loader(args.style)
-    content_mask, style_mask = None, None
-
-    if args.content_mask and args.style_mask is not None:
-        use_guidance = True
-        regions = extract_regions(args.content_mask, args.style_mask)
-
-        pil_content_mask = pil_loader(args.content_mask)
-        pil_style_mask = pil_loader(args.style_mask)
-
-        pil_content_mask = pil_resize_long_edge_to(pil_content_mask, args.resize_to)
-        pil_style_mask = pil_resize_long_edge_to(pil_style_mask, args.resize_to)
-
-        content_mask = pil_to_np(pil_content_mask)
-        style_mask = pil_to_np(pil_style_mask)
-
-        content_mask = create_mask_from_image(content_mask)
-        style_mask = create_mask_from_image(style_mask)
-    else:
-        try:
-            regions = [[pil_to_np(pil_resize_long_edge_to(pil_loader(args.content), args.resize_to))[:,:,0]*0.+1.], [pil_to_np(pil_resize_long_edge_to(pil_loader(args.style), args.resize_to))[:,:,0]*0.+1.]]
-        except:
-            regions = [[pil_to_np(pil_resize_long_edge_to(pil_loader(args.content), args.resize_to))[:,:]*0.+1.], [pil_to_np(pil_resize_long_edge_to(pil_loader(args.style), args.resize_to))[:,:]*0.+1.]]
-    
     content_weight = args.weight * 16.0
 
     device = args.device
 
     start = time()
     result = strotss(pil_resize_long_edge_to(content_pil, args.resize_to), 
-                     pil_resize_long_edge_to(style_pil, args.resize_to), args.content, args.style, regions, coords, content_weight, device, args.ospace, use_guidance=use_guidance, content_mask=content_mask, style_mask=style_mask)
+                     pil_resize_long_edge_to(style_pil, args.resize_to), content_weight, device, args.ospace)
     result.save(args.output)
     print(f'Done in {time()-start:.3f}s')
