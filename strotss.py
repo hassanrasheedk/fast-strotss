@@ -98,7 +98,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
 
     for ri in range(len(regions[0])):
         r_temp = regions[0][ri]
-        r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
+        r_temp = (torch.Tensor(r_temp.astype(np.float64) / 127.5) - 1.0).permute((2,0,1)).unsqueeze(0)
         r = F.interpolate(r_temp,(stylized.size(3),stylized.size(2)),mode='bilinear', align_corners=False)[0,0,:,:].numpy()        
 
         if r.max()<0.1:
@@ -133,7 +133,7 @@ def strotss(content_pil, style_pil, content_path, style_path, regions, coords, c
     style_np = pil_to_np(style_pil)
     content_full = np_to_tensor(content_np, space).to(device)
     style_full = np_to_tensor(style_np, space).to(device)
-    regions = np_to_tensor(regions, space).to(device)
+    # regions = np_to_tensor(regions, space).to(device)
 
     if content_mask is not None and style_mask is not None:
         content_mask = content_mask.to(device)
