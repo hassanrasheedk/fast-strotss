@@ -333,7 +333,7 @@ def load_style_folder(extractor, style_im, regions, ri, n_samps=-1,subsamps=-1,s
         style_im = sts[np.random.randint(0,len(sts))]
         
         with torch.no_grad():
-            zt = extractor.forward_samples_hypercolumn(style_im,subsamps,r)
+            zt = extractor.forward_samples_hypercolumn(style_im,subsamps)
             
         zt = [li.view(li.size(0),li.size(1),-1,1) for li in zt]
 
