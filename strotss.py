@@ -108,7 +108,7 @@ def tensor_to_np(tensor, cut_dim_to_3=True):
 def np_to_tensor(npy, space):
     if space == 'vgg':
         return np_to_tensor_correct(npy)
-    return (torch.Tensor(npy.astype(np.float64) / 127.5) - 1.0).permute((2,0,1)).unsqueeze(0)
+    return (torch.Tensor(npy.astype(np.float32) / 127.5) - 1.0).permute((2,0,1)).unsqueeze(0)
 
 def np_to_tensor_correct(npy):
     pil = np_to_pil(npy)
