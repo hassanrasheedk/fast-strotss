@@ -66,7 +66,7 @@ class Vgg16_Extractor(nn.Module):
         feat = torch.cat(feat_samples,1)
         return feat
     
-def optimize(result, content, style, scale, content_weight, lr, extractor):
+def optimize(result, content, style, content_path, style_path, scale, content_weight, lr, extractor, coords=0, use_guidance=False, regions=0):
     # torch.autograd.set_detect_anomaly(True)
     result_pyramid = make_laplace_pyramid(result, 5)
     result_pyramid = [l.data.requires_grad_() for l in result_pyramid]
@@ -83,6 +83,10 @@ def optimize(result, content, style, scale, content_weight, lr, extractor):
 
     stylized = fold_laplace_pyramid(result_pyramid)
     # let's ignore the regions for now
+    ### Extract guidance features if required ###
+    feat_guidance = np.array([0.])
+    if use_guidance:
+        feat_guidance = load_style_guidance(extractor, style_path, coords[:,2:], scale)
     # some inner loop that extracts samples
     feat_style = None
     for i in range(5):
@@ -91,9 +95,22 @@ def optimize(result, content, style, scale, content_weight, lr, extractor):
             feat_e = extractor.forward_samples_hypercolumn(style, samps=1000)
             feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
     # feat_style.requires_grad_(False)
+    for ri in range(len(regions[0])):
+        
+
+        r_temp = regions[0][ri]
+        r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
+        r = F.interpolate(r_temp,(stylized.size(3),stylized.size(2)),mode='bilinear', align_corners=False)[0,0,:,:].numpy()        
+
+        if r.max()<0.1:
+            r = np.greater(r+1.,0.5)
+        else:
+            r = np.greater(r,0.5)
+
+        xx, xy = sample_indices(feat_content[0], feat_style, r, ri) # 0 to sample over first layer extracted
 
     # init indices to optimize over
-    xx, xy = sample_indices(feat_content[0], feat_style) # 0 to sample over first layer extracted
+    # xx, xy = sample_indices(feat_content[0], feat_style) # 0 to sample over first layer extracted
     for it in range(opt_iter):
         optimizer.zero_grad()
 
@@ -106,17 +123,21 @@ def optimize(result, content, style, scale, content_weight, lr, extractor):
             np.random.shuffle(xy)
         feat_result = extractor(stylized)
 
-        loss = calculate_loss(feat_result, feat_content, feat_style, [xx, xy], content_weight)
+        loss = calculate_loss(feat_result, feat_content, feat_style, feat_guidance, [xx, xy], content_weight, regions)
         loss.backward()
         optimizer.step()
     return stylized
 
 
-def strotss(content_pil, style_pil, content_weight=1.0*16.0, device='cuda:0', space='uniform'):
+def strotss(content_pil, style_pil, content_path, style_path, regions, coords, content_weight=1.0*16.0, device='cuda:0', space='uniform', use_guidance=False, content_mask=None, style_mask=None):
     content_np = pil_to_np(content_pil)
     style_np = pil_to_np(style_pil)
     content_full = np_to_tensor(content_np, space).to(device)
     style_full = np_to_tensor(style_np, space).to(device)
+
+    if content_mask is not None and style_mask is not None:
+        content_mask = content_mask.to(device)
+        style_mask = style_mask.to(device)
 
     lr = 2e-3
     extractor = Vgg16_Extractor(space=space).to(device)
@@ -146,7 +167,7 @@ def strotss(content_pil, style_pil, content_weight=1.0*16.0, device='cuda:0', sp
             result = tensor_resample(result, [content.shape[2], content.shape[3]]) + laplacian(content)
 
         # do the optimization on this scale
-        result = optimize(result, content, style, scale, content_weight=content_weight, lr=lr, extractor=extractor)
+        result = optimize(result, content, style, content_path, style_path, scale, content_weight=content_weight, lr=lr, extractor=extractor, coords=coords, use_guidance=use_guidance, regions=regions)
 
         # next scale lower weight
         content_weight /= 2.0
@@ -163,6 +184,8 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("content", type=str)
     parser.add_argument("style", type=str)
+    parser.add_argument("--content_mask", type=str, default=None)
+    parser.add_argument("--style_mask", type=str, default=None)
     parser.add_argument("--weight", type=float, default=1.0)
     parser.add_argument("--output", type=str, default="strotss.png")
     parser.add_argument("--device", type=str, default="cuda:0")
@@ -176,13 +199,34 @@ if __name__ == "__main__":
         print("Resulution too low.")
         exit(1)
 
+    use_guidance = False
+    coords=0.
     content_pil, style_pil = pil_loader(args.content), pil_loader(args.style)
+
+    if args.content_mask and args.style_mask is not None:
+        use_guidance = True
+        regions = extract_regions(args.content_mask, args.style_mask)
+
+        pil_content_mask = pil_loader(args.content_mask)
+        pil_style_mask = pil_loader(args.style_mask)
+
+        pil_resize_long_edge_to(pil_content_mask, args.resize_to)
+        pil_resize_long_edge_to(pil_style_mask, args.resize_to)
+
+        content_mask = create_mask_from_image(args.content_mask)
+        style_mask = create_mask_from_image(args.style_mask)
+    else:
+        try:
+            regions = [[imread(args.content)[:,:,0]*0.+1.], [imread(args.style)[:,:,0]*0.+1.]]
+        except:
+            regions = [[imread(args.content)[:,:]*0.+1.], [imread(args.style)[:,:]*0.+1.]]
+    
     content_weight = args.weight * 16.0
 
     device = args.device
 
     start = time()
     result = strotss(pil_resize_long_edge_to(content_pil, args.resize_to), 
-                     pil_resize_long_edge_to(style_pil, args.resize_to), content_weight, device, args.ospace)
+                     pil_resize_long_edge_to(style_pil, args.resize_to), args.content, args.style, regions, coords, content_weight, device, args.ospace, use_guidance=use_guidance, content_mask=content_mask, style_mask=style_mask)
     result.save(args.output)
     print(f'Done in {time()-start:.3f}s')
