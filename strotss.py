@@ -124,19 +124,25 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     # xx, xy = sample_indices(feat_content[0], feat_style) # 0 to sample over first layer extracted
     for it in range(opt_iter):
         optimizer.zero_grad()
+        total_loss = 0.
 
         stylized = fold_laplace_pyramid(result_pyramid)
-        # original code has resample here, seems pointless with uniform shuffle
-        # ...
-        # also shuffle them every y iter
+        
         if it % 1 == 0 and it != 0:
             for ri in xx.keys():
                 np.random.shuffle(xx[ri])
                 np.random.shuffle(xy[ri])
-
+        
         feat_result = extractor(stylized)
-
-        loss = calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx, xy, content_weight, regions)
+        
+        for ri in xx.keys():
+            # original code has resample here, seems pointless with uniform shuffle
+            # ...
+            # also shuffle them every y iter
+            num_locations = 1024
+            xx_arr, xy_arr = get_feature_indices(xx, xy, ri=ri, cnt=num_locations)
+            loss = calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx_arr, xy_arr, content_weight, regions)
+            total_loss += loss
         loss.backward()
         optimizer.step()
     return stylized
