@@ -83,18 +83,18 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
 
     stylized = fold_laplace_pyramid(result_pyramid)
     # let's ignore the regions for now
-    # some inner loop that extracts samples
-    feat_style = None
-    for ri in range(len(regions[1])):
-        with torch.no_grad():
-            feat_e = load_style_folder(extractor, style, regions, ri, n_samps=1, subsamps=1000, scale=scale, inner=5)
-            feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
-            feat_style = np.array(feat_style)
-
     ### Extract guidance features if required ###
     feat_guidance = np.array([0.])
     if use_guidance:
-        feat_guidance = load_style_guidance(extractor, style, coords[:,2:])
+        feat_guidance = load_style_guidance(extractor, style_path, coords[:,2:], scale)
+    # some inner loop that extracts samples
+    feat_style = None
+    for i in range(5):
+        with torch.no_grad():
+            # r is region of interest (mask)
+            feat_e = extractor.forward_samples_hypercolumn(style, samps=1000)
+            feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
+    # feat_style.requires_grad_(False)
 
     for ri in range(len(regions[0])):
         r_temp = regions[0][ri]

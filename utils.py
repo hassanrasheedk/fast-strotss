@@ -87,9 +87,9 @@ def sample_indices(feat_content, feat_style_all, r, ri):
     indices = None
     const = 128**2 # 32k or so
 
-    # feat_style =  feat_style_all[ri]
+    feat_style =  feat_style_all[ri]
 
-    # feat_dims = feat_style.shape[1]
+    feat_dims = feat_style.shape[1]
     big_size = feat_content.shape[2] * feat_content.shape[3] # num feaxels
 
     stride_x = int(max(math.floor(math.sqrt(big_size//const)),1))
@@ -258,7 +258,12 @@ def extract_regions(content_path, style_path):
 
 
 
-def load_style_guidance(extractor,style_im,coords_t,device="cuda:0"):
+def load_style_guidance(extractor,path,coords_t,scale,device="cuda:0"):
+
+    style_pil = pil_loader(path)
+    style_pil = pil_resize_long_edge_to(style_pil, scale)
+    style_np = pil_to_np(style_pil)
+    style_im = np_to_tensor(style_np).to(device)
 
     coords = coords_t.copy()
     coords[:,0]=coords[:,0]*style_im.size(2)
@@ -308,39 +313,3 @@ def load_style_guidance(extractor,style_im,coords_t,device="cuda:0"):
     gz = torch.cat([li.contiguous() for li in l2],1)
 
     return gz
-
-def load_style_folder(extractor, style_im, regions, ri, n_samps=-1,subsamps=-1,scale=-1, inner=1, cpu_mode=False):
-        
-    total_sum = 0.
-    z = []
-    z_ims = []
-    nloaded = 0
-
-    nloaded += 1
-    
-    r_temp = regions[1][ri]
-    if len(r_temp.shape) > 2:
-        r_temp = r_temp[:,:,0]
-
-    r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
-    r = F.interpolate(r_temp,(style_im.size(3),style_im.size(2)),mode='bilinear', align_corners=False)[0,0,:,:].numpy()        
-    sts = [style_im]
-
-    z_ims.append(style_im)
-
-    for j in range(inner):
-
-        style_im = sts[np.random.randint(0,len(sts))]
-        
-        with torch.no_grad():
-            zt = extractor.forward_samples_hypercolumn(style_im,subsamps)
-            
-        zt = [li.view(li.size(0),li.size(1),-1,1) for li in zt]
-
-        if len(z) == 0:
-            z = zt
-
-        else:
-            z = [torch.cat([zt[i],z[i]],2) for i in range(len(z))]
-
-    return z, z_ims
