@@ -98,8 +98,9 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
 
     for ri in range(len(regions[0])):
         r_temp = regions[0][ri]
-        r_temp = (torch.Tensor(r_temp.astype(np.float64) / 127.5) - 1.0).permute((2,0,1)).unsqueeze(0)
-        r = r_temp[0,0,:,:].numpy() 
+        r = np_to_tensor_correct(r_temp)
+        r = r[0,0,:,:].numpy()
+        # r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
         # r = F.interpolate(r_temp,(stylized.size(3),stylized.size(2)),mode='bilinear', align_corners=False)[0,0,:,:].numpy()        
 
         if r.max()<0.1:
