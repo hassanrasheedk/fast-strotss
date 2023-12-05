@@ -337,10 +337,4 @@ def load_style_folder(extractor, style_im, regions, ri, n_samps=-1,subsamps=-1,s
             
         zt = [li.view(li.size(0),li.size(1),-1,1) for li in zt]
 
-        # if len(z) == 0:
-        #     z = zt
-
-        # else:
-        #     z = [torch.cat([zt[i],z[i]],2) for i in range(len(z))]
-
     return zt
