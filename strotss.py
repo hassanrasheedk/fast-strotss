@@ -127,9 +127,10 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
             for ri in xx.keys():
                 np.random.shuffle(xx[ri])
                 np.random.shuffle(xy[ri])
+
         feat_result = extractor(stylized)
 
-        loss = calculate_loss(feat_result, feat_content, feat_style, feat_guidance, [xx, xy], content_weight, regions)
+        loss = calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx, xy, content_weight, regions)
         loss.backward()
         optimizer.step()
     return stylized
