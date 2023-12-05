@@ -90,7 +90,7 @@ def calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx_dict
     # spatial feature extract
     num_locations = 1024
     xx, xy = get_feature_indices(xx_dict, xy_dict, cnt=num_locations)
-    spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx[0], xy[1])
+    spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx, xy)
 
     if feat_guidance.sum() > 0:
         gxx, gyy = get_guidance_indices()
