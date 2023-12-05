@@ -86,38 +86,42 @@ def moment_loss(X, Y, moments=[1,2]):
 
     return loss
 
-def calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx, xy, content_weight, regions, moment_weight=1.0):
+def calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx_dict, xy_dict, content_weight, regions, moment_weight=1.0):
     # spatial feature extract
-    spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx, xy)
+    num_locations = 1024
+    loss_total = 0.
+    for ri in range(len(xx_dict.keys())):
+        xx, xy = get_feature_indices(xx_dict, xy_dict, ri=ri, cnt=num_locations)
+        spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx, xy)
 
-    if feat_guidance.sum() > 0:
-        gxx, gyy = get_guidance_indices()
-        g_spatial_result, g_spatial_content = spatial_feature_extract(feat_result, feat_content, gxx, gyy)
+        if feat_guidance.sum() > 0:
+            gxx, gyy = get_guidance_indices()
+            g_spatial_result, g_spatial_content = spatial_feature_extract(feat_result, feat_content, gxx, gyy)
 
-    loss_content = content_loss(spatial_result, spatial_content)
+        loss_content = content_loss(spatial_result, spatial_content)
 
-    d = feat_style.shape[1]
-    spatial_style = feat_style.view(1, d, -1, 1)
+        d = feat_style.shape[1]
+        spatial_style = feat_style.view(1, d, -1, 1)
 
-    feat_max = 3+2*64+128*2+256*3+512*2 # (sum of all extracted channels)
+        feat_max = 3+2*64+128*2+256*3+512*2 # (sum of all extracted channels)
 
-    loss_remd = style_loss(spatial_result[:, :feat_max, :, :], spatial_style[:, :feat_max, :, :])
+        loss_remd = style_loss(spatial_result[:, :feat_max, :, :], spatial_style[:, :feat_max, :, :])
 
-    if feat_guidance.sum() > 0.:
-        for j in range(feat_guidance.size(2)):
-            loss_remd += style_loss(g_spatial_result[:,:-2,j:(j+1),:], feat_guidance[:,:,j:(j+1),:])[0]/feat_guidance.size(2)
-    if feat_guidance.sum() > 0.:
-        loss_moment = moment_loss(torch.cat([spatial_result, g_spatial_result],2)[:,:-2,:,:], torch.cat([spatial_style, feat_guidance],2), moments=[1,2]) # -2 is so that it can fit?
-    else:
-        loss_moment = moment_loss(spatial_result[:,:-2,:,:], spatial_style, moments=[1,2]) # -2 is so that it can fit?
-    # palette matching
-    content_weight_frac = 1./max(content_weight,1.)
-    loss_moment += content_weight_frac * style_loss(spatial_result[:,:3,:,:], spatial_style[:,:3,:,:])
-    
-    loss_style = loss_remd + moment_weight * loss_moment
-    # print(f'Style: {loss_style.item():.3f}, Content: {loss_content.item():.3f}')
+        if feat_guidance.sum() > 0.:
+            for j in range(feat_guidance.size(2)):
+                loss_remd += style_loss(g_spatial_result[:,:-2,j:(j+1),:], feat_guidance[:,:,j:(j+1),:])[0]/feat_guidance.size(2)
+        if feat_guidance.sum() > 0.:
+            loss_moment = moment_loss(torch.cat([spatial_result, g_spatial_result],2)[:,:-2,:,:], torch.cat([spatial_style, feat_guidance],2), moments=[1,2]) # -2 is so that it can fit?
+        else:
+            loss_moment = moment_loss(spatial_result[:,:-2,:,:], spatial_style, moments=[1,2]) # -2 is so that it can fit?
+        # palette matching
+        content_weight_frac = 1./max(content_weight,1.)
+        loss_moment += content_weight_frac * style_loss(spatial_result[:,:3,:,:], spatial_style[:,:3,:,:])
+        
+        loss_style = loss_remd + moment_weight * loss_moment
+        # print(f'Style: {loss_style.item():.3f}, Content: {loss_content.item():.3f}')
 
-    style_weight = 1.0 + moment_weight
-    loss_total = (content_weight * loss_content + loss_style) / (content_weight + style_weight)
+        style_weight = 1.0 + moment_weight
+        loss_total += (content_weight * loss_content + loss_style) / (content_weight + style_weight)
 
-    return loss_total
+    return loss_total/len(xx_dict.keys())
