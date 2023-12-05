@@ -224,11 +224,14 @@ if __name__ == "__main__":
         pil_content_mask = pil_loader(args.content_mask)
         pil_style_mask = pil_loader(args.style_mask)
 
-        pil_resize_long_edge_to(pil_content_mask, args.resize_to)
-        pil_resize_long_edge_to(pil_style_mask, args.resize_to)
+        pil_content_mask = pil_resize_long_edge_to(pil_content_mask, args.resize_to)
+        pil_style_mask = pil_resize_long_edge_to(pil_style_mask, args.resize_to)
 
-        content_mask = create_mask_from_image(args.content_mask)
-        style_mask = create_mask_from_image(args.style_mask)
+        content_mask = pil_to_np(pil_content_mask)
+        style_mask = pil_to_np(pil_style_mask)
+
+        content_mask = create_mask_from_image(content_mask)
+        style_mask = create_mask_from_image(style_mask)
     else:
         try:
             regions = [[pil_to_np(pil_resize_long_edge_to(pil_loader(args.content), args.resize_to))[:,:,0]*0.+1.], [pil_to_np(pil_resize_long_edge_to(pil_loader(args.style), args.resize_to))[:,:,0]*0.+1.]]
