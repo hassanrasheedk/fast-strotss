@@ -96,9 +96,9 @@ def sample_indices(feat_content, feat_style_all, r, ri):
     offset_y = np.random.randint(stride_y)
     xx, xy = np.meshgrid(np.arange(feat_content.shape[2])[offset_x::stride_x], np.arange(feat_content.shape[3])[offset_y::stride_y])
 
-    xx = xx.flatten()
-    xy = xy.flatten()
-    xc = np.concatenate([xx,xy])
+    xx = np.expand_dims(xx.flatten(),1)
+    xy = np.expand_dims(xy.flatten(),1)
+    xc = np.concatenate([xx,xy], 1)
     # xc = np.concatenate([xx,xy],1)
 
     region_mask = r
@@ -110,13 +110,13 @@ def sample_indices(feat_content, feat_style_all, r, ri):
     print(f"Shape of xc: {xc.shape}")
 
     try:
-        xc = xc[region_mask[xy[:],xx[:]]]
+        xc = xc[region_mask[xy[:,0],xx[:,0]], :]
     except:
         region_mask = region_mask[:,:]
-        xc = xc[region_mask[xy[:],xx[:]]]
+        xc = xc[region_mask[xy[:,0],xx[:,0]], :]
 
-    xx[ri].append(xc[:])
-    xy[ri].append(xc[:])
+    xx[ri] = xc[:,0]
+    xy[ri] = xc[:,1]
     
     return xx, xy
     
