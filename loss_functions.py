@@ -89,8 +89,8 @@ def moment_loss(X, Y, moments=[1,2]):
 def calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx_dict, xy_dict, content_weight, regions, moment_weight=1.0):
     # spatial feature extract
     num_locations = 1024
-    xx, xy = get_feature_indices(xx_dict, xy_dict)
-    spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx[0][:num_locations], xy[1][:num_locations])
+    xx, xy = get_feature_indices(xx_dict, xy_dict, cnt=num_locations)
+    spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx[0], xy[1])
 
     if feat_guidance.sum() > 0:
         gxx, gyy = get_guidance_indices()
