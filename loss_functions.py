@@ -120,7 +120,7 @@ def calculate_loss(feat_result, feat_content, feat_style, xx_dict, xy_dict, yy_d
         loss_moment = moment_loss(spatial_result[:,:-2,:,:], spatial_style, moments=[1,2]) # -2 is so that it can fit?
         # palette matching
         content_weight_frac = 1./max(content_weight,1.)
-        loss_moment += content_weight_frac * style_loss(spatial_result[:,:3,:,:], spatial_style[:,:3,:,:])
+        loss_moment += content_weight_frac * style_loss(spatial_result[:,:3,:,:], spatial_style[:,:3,:,:])[0]
         
         loss_style = loss_remd + moment_weight * loss_moment
         # print(f'Style: {loss_style.item():.3f}, Content: {loss_content.item():.3f}')
