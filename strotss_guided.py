@@ -111,7 +111,7 @@ class Vgg16_Extractor(nn.Module):
         feat = torch.cat(feat_samples,1)
         return feat
     
-def optimize(result, content, style, content_path, style_path, scale, content_weight, lr, extractor, coords=0, use_guidance=False, regions=0):
+def optimize(result, content, style, content_path, style_path, scale, content_weight, lr, extractor, regions=0):
     # torch.autograd.set_detect_anomaly(True)
     result_pyramid = make_laplace_pyramid(result, 5)
     result_pyramid = [l.data.requires_grad_() for l in result_pyramid]
@@ -190,7 +190,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     return stylized
 
 
-def strotss(content_pil, style_pil, content_path, style_path, regions, coords, content_weight=1.0*16.0, device='cuda:0', space='uniform', use_guidance=False, content_mask=None, style_mask=None):
+def strotss(content_pil, style_pil, content_path, style_path, regions, content_weight=1.0*16.0, device='cuda:0', space='uniform', content_mask=None, style_mask=None):
     content_np = pil_to_np(content_pil)
     style_np = pil_to_np(style_pil)
     content_full = np_to_tensor(content_np, space).to(device)
@@ -228,7 +228,7 @@ def strotss(content_pil, style_pil, content_path, style_path, regions, coords, c
             result = tensor_resample(result, [content.shape[2], content.shape[3]]) + laplacian(content)
 
         # do the optimization on this scale
-        result = optimize(result, content, style, content_path, style_path, scale, content_weight=content_weight, lr=lr, extractor=extractor, coords=coords, use_guidance=use_guidance, regions=regions)
+        result = optimize(result, content, style, content_path, style_path, scale, content_weight=content_weight, lr=lr, extractor=extractor, regions=regions)
 
         # next scale lower weight
         content_weight /= 2.0
@@ -260,7 +260,6 @@ if __name__ == "__main__":
         print("Resulution too low.")
         exit(1)
 
-    use_guidance = False
     content_pil, style_pil = pil_loader(args.content), pil_loader(args.style)
     content_mask, style_mask = None, None
 
@@ -290,6 +289,6 @@ if __name__ == "__main__":
 
     start = time()
     result = strotss(pil_resize_long_edge_to(content_pil, args.resize_to), 
-                     pil_resize_long_edge_to(style_pil, args.resize_to), args.content, args.style, regions, coords, content_weight, device, args.ospace, use_guidance=use_guidance, content_mask=content_mask, style_mask=style_mask)
+                     pil_resize_long_edge_to(style_pil, args.resize_to), args.content, args.style, regions, content_weight, device, args.ospace, content_mask=content_mask, style_mask=style_mask)
     result.save(args.output)
     print(f'Done in {time()-start:.3f}s')
