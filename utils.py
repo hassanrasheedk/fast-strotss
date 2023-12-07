@@ -120,18 +120,10 @@ def sample_indices(feat_content, feat_style_all, r, ri):
 
 def get_feature_indices(xx_dict, xy_dict, ri=0, i=0, cnt=32**2):
 
-        global use_random
+    xx = xx_dict[ri][:cnt]
+    xy = xy_dict[ri][:cnt]
 
-        if use_random:
-            xx = xx_dict[ri][i][:cnt]
-            xy = xy_dict[ri][i][:cnt]
-            # yx = self.rand_iy[ri][i][:cnt]
-        else:
-            xx = xx_dict[ri][i][::(xx_dict[ri][i].shape[0]//cnt)]
-            xy = xy_dict[ri][i][::(xy_dict[ri][i].shape[0]//cnt)]
-            # yx =  self.rand_iy[ri][i][::(self.rand_iy[ri][i].shape[0]//cnt)]
-
-        return xx, xy
+    return xx, xy
 
     
 def get_guidance_indices(feat_result, coords):
