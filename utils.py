@@ -226,27 +226,52 @@ def create_mask_from_image(image, ignore_color=[0, 0, 0]):
     return mask
 
 
-def extract_regions(content_path, style_path):
+# def extract_regions(content_path, style_path):
+#     s_regions = imread(style_path).transpose(1,0,2)
+#     c_regions = imread(content_path).transpose(1,0,2)
+
+#     color_codes,c1 = np.unique(s_regions.reshape(-1, s_regions.shape[2]), axis=0,return_counts=True)
+
+#     color_codes = color_codes[c1>10000]
+
+#     c_out = []
+#     s_out = []
+
+#     for c in color_codes:
+#         c_expand =  np.expand_dims(np.expand_dims(c,0),0)
+        
+#         s_mask = np.equal(np.sum(s_regions - c_expand,axis=2),0).astype(np.float32)
+#         c_mask = np.equal(np.sum(c_regions - c_expand,axis=2),0).astype(np.float32)
+
+#         s_out.append(s_mask)
+#         c_out.append(c_mask)
+
+#     return [c_out,s_out]
+
+def extract_regions(content_path, style_path, min_region_size=10000):
     s_regions = imread(style_path).transpose(1,0,2)
     c_regions = imread(content_path).transpose(1,0,2)
 
-    color_codes,c1 = np.unique(s_regions.reshape(-1, s_regions.shape[2]), axis=0,return_counts=True)
+    color_codes, c1 = np.unique(s_regions.reshape(-1, s_regions.shape[2]), axis=0, return_counts=True)
+    color_codes = color_codes[c1 > min_region_size]
 
-    color_codes = color_codes[c1>10000]
+    if len(color_codes) == 0:  # No distinct regions found
+        return [[[1]], [[1]]]  # Default to entire image as one region
 
     c_out = []
     s_out = []
 
     for c in color_codes:
-        c_expand =  np.expand_dims(np.expand_dims(c,0),0)
+        c_expand = np.expand_dims(np.expand_dims(c, 0), 0)
         
-        s_mask = np.equal(np.sum(s_regions - c_expand,axis=2),0).astype(np.float32)
-        c_mask = np.equal(np.sum(c_regions - c_expand,axis=2),0).astype(np.float32)
+        s_mask = np.equal(np.sum(s_regions - c_expand, axis=2), 0).astype(np.float32)
+        c_mask = np.equal(np.sum(c_regions - c_expand, axis=2), 0).astype(np.float32)
 
         s_out.append(s_mask)
         c_out.append(c_mask)
 
-    return [c_out,s_out]
+    return [c_out, s_out]
+
 
 
 
