@@ -261,7 +261,6 @@ if __name__ == "__main__":
         exit(1)
 
     use_guidance = False
-    coords=0.
     content_pil, style_pil = pil_loader(args.content), pil_loader(args.style)
     content_mask, style_mask = None, None
 
