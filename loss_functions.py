@@ -61,28 +61,41 @@ def style_loss(X, Y, cos_d=True):
 
 def moment_loss(X, Y, moments=[1,2]):
     loss = 0.
-    X = X.squeeze().t()
-    Y = Y.squeeze().t()
+    d = X.size()
+    # X = X.squeeze().t()
+    # Y = Y.squeeze().t()
 
-    mu_x = torch.mean(X, 0, keepdim=True)
-    mu_y = torch.mean(Y, 0, keepdim=True)
-    mu_d = torch.abs(mu_x - mu_y).mean()
+    Xo = X.transpose(0,1).contiguous().view(d,-1).transpose(0,1)
+    Yo = Y.transpose(0,1).contiguous().view(d,-1).transpose(0,1)
 
-    if 1 in moments:
-        # print(mu_x.shape)
-        loss = loss + mu_d
+    splits = [Xo.size(1)]
 
-    if 2 in moments:
-        X_c = X - mu_x
-        Y_c = Y - mu_y
-        X_cov = torch.mm(X_c.t(), X_c) / (X.shape[0] - 1)
-        Y_cov = torch.mm(Y_c.t(), Y_c) / (Y.shape[0] - 1)
+    cb = 0
+    ce = 0
+    for i in range(len(splits)):
+        ce = cb + splits[i]
+        X = Xo[:,cb:ce]
+        Y = Yo[:,cb:ce]
+        cb = ce
 
-        # print(X_cov.shape)
-        # exit(1)
+        mu_x = torch.mean(X,0,keepdim=True)
+        mu_y = torch.mean(Y,0,keepdim=True)
+        mu_d = torch.abs(mu_x-mu_y).mean()
 
-        D_cov = torch.abs(X_cov - Y_cov).mean()
-        loss = loss + D_cov
+        if 1 in moments:
+            # print(mu_x.shape)
+            loss = loss + mu_d
+
+        if 2 in moments:
+
+            sig_x = torch.mm((X-mu_x).transpose(0,1), (X-mu_x))/X.size(0)
+            sig_y = torch.mm((Y-mu_y).transpose(0,1), (Y-mu_y))/Y.size(0)
+
+            sig_d = torch.abs(sig_x-sig_y).mean()
+
+            # print(X_cov.shape)
+            # exit(1)
+            loss = loss + sig_d
 
     return loss
 
