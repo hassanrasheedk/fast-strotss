@@ -140,7 +140,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
             with torch.no_grad():
                 feat_e = extractor.forward_cat(style, r, samps=1000)        
                 feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
-                feat_style_all.append(feat_style)
+        feat_style_all.append(feat_style)
 
     xx = {}
     xy = {}
