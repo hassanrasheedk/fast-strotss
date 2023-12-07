@@ -106,7 +106,7 @@ def calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx_dict
 
     # num_regions = len(regions[1])
 
-    for ri in range(xx_dict.keys()):
+    for ri in range(len(xx_dict.keys())):
         xx, xy = get_feature_indices(xx_dict, xy_dict, ri=ri, cnt=num_locations)
         spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx, xy)
 
