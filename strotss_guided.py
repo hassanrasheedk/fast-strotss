@@ -268,7 +268,6 @@ if __name__ == "__main__":
     content_mask, style_mask = None, None
 
     if args.content_mask and args.style_mask is not None:
-        use_guidance = True
         regions = extract_regions(args.content_mask, args.style_mask)
 
         pil_content_mask = pil_loader(args.content_mask)
