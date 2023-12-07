@@ -199,63 +199,63 @@ def get_guidance_indices(feat_result, coords):
 #     return x_st, c_st
 
 
-def spatial_feature_extract(self, z_x, z_c, xx, xy):
+def spatial_feature_extract(z_x, z_c, xx, xy):
 
-        l2 = []
-        l3 = []
+    l2 = []
+    l3 = []
 
-        for i in range(len(z_x)):
+    for i in range(len(z_x)):
 
-            temp = z_x[i]
-            temp2 = z_c[i]
+        temp = z_x[i]
+        temp2 = z_c[i]
 
-            if i>0 and z_x[i-1].size(2) > z_x[i].size(2):
-                xx = xx/2.0
-                xy = xy/2.0
+        if i>0 and z_x[i-1].size(2) > z_x[i].size(2):
+            xx = xx/2.0
+            xy = xy/2.0
 
-            xxm = np.floor(xx).astype(np.float32)
-            xxr = xx - xxm
+        xxm = np.floor(xx).astype(np.float32)
+        xxr = xx - xxm
 
-            xym = np.floor(xy).astype(np.float32)
-            xyr = xy - xym
+        xym = np.floor(xy).astype(np.float32)
+        xyr = xy - xym
 
-            w00 = torch.from_numpy((1.-xxr)*(1.-xyr)).cuda().float().unsqueeze(0).unsqueeze(1).unsqueeze(3)
-            w01 = torch.from_numpy((1.-xxr)*xyr).cuda().float().unsqueeze(0).unsqueeze(1).unsqueeze(3)
-            w10 = torch.from_numpy(xxr*(1.-xyr)).cuda().float().unsqueeze(0).unsqueeze(1).unsqueeze(3)
-            w11 = torch.from_numpy(xxr*xyr).cuda().float().unsqueeze(0).unsqueeze(1).unsqueeze(3)
-
-
-            xxm = np.clip(xxm.astype(np.int32),0,temp.size(2)-1)
-            xym = np.clip(xym.astype(np.int32),0,temp.size(3)-1)
-
-            s00 = xxm*temp.size(3)+xym
-            s01 = xxm*temp.size(3)+np.clip(xym+1,0,temp.size(3)-1)
-            s10 = np.clip(xxm+1,0,temp.size(2)-1)*temp.size(3)+(xym)
-            s11 = np.clip(xxm+1,0,temp.size(2)-1)*temp.size(3)+np.clip(xym+1,0,temp.size(3)-1)
+        w00 = torch.from_numpy((1.-xxr)*(1.-xyr)).cuda().float().unsqueeze(0).unsqueeze(1).unsqueeze(3)
+        w01 = torch.from_numpy((1.-xxr)*xyr).cuda().float().unsqueeze(0).unsqueeze(1).unsqueeze(3)
+        w10 = torch.from_numpy(xxr*(1.-xyr)).cuda().float().unsqueeze(0).unsqueeze(1).unsqueeze(3)
+        w11 = torch.from_numpy(xxr*xyr).cuda().float().unsqueeze(0).unsqueeze(1).unsqueeze(3)
 
 
-            temp = temp.view(1,temp.size(1),temp.size(2)*temp.size(3),1)
-            temp = temp[:,:,s00,:].mul_(w00).add_(temp[:,:,s01,:].mul_(w01)).add_(temp[:,:,s10,:].mul_(w10)).add_(temp[:,:,s11,:].mul_(w11))
-            
+        xxm = np.clip(xxm.astype(np.int32),0,temp.size(2)-1)
+        xym = np.clip(xym.astype(np.int32),0,temp.size(3)-1)
 
-            temp2 = temp2.view(1,temp2.size(1),temp2.size(2)*temp2.size(3),1)
-            temp2 = temp2[:,:,s00,:].mul_(w00).add_(temp2[:,:,s01,:].mul_(w01)).add_(temp2[:,:,s10,:].mul_(w10)).add_(temp2[:,:,s11,:].mul_(w11))
-
-            l2.append(temp)
-            l3.append(temp2)
-
-        x_st = torch.cat([li.contiguous() for li in l2],1)
-        c_st = torch.cat([li.contiguous() for li in l3],1)
+        s00 = xxm*temp.size(3)+xym
+        s01 = xxm*temp.size(3)+np.clip(xym+1,0,temp.size(3)-1)
+        s10 = np.clip(xxm+1,0,temp.size(2)-1)*temp.size(3)+(xym)
+        s11 = np.clip(xxm+1,0,temp.size(2)-1)*temp.size(3)+np.clip(xym+1,0,temp.size(3)-1)
 
 
-        xx = torch.from_numpy(xx).cuda().view(1,1,x_st.size(2),1).float()
-        yy = torch.from_numpy(xy).cuda().view(1,1,x_st.size(2),1).float()
+        temp = temp.view(1,temp.size(1),temp.size(2)*temp.size(3),1)
+        temp = temp[:,:,s00,:].mul_(w00).add_(temp[:,:,s01,:].mul_(w01)).add_(temp[:,:,s10,:].mul_(w10)).add_(temp[:,:,s11,:].mul_(w11))
+        
+
+        temp2 = temp2.view(1,temp2.size(1),temp2.size(2)*temp2.size(3),1)
+        temp2 = temp2[:,:,s00,:].mul_(w00).add_(temp2[:,:,s01,:].mul_(w01)).add_(temp2[:,:,s10,:].mul_(w10)).add_(temp2[:,:,s11,:].mul_(w11))
+
+        l2.append(temp)
+        l3.append(temp2)
+
+    x_st = torch.cat([li.contiguous() for li in l2],1)
+    c_st = torch.cat([li.contiguous() for li in l3],1)
 
 
-        x_st = torch.cat([x_st,xx,yy],1)
-        c_st = torch.cat([c_st,xx,yy],1)
+    xx = torch.from_numpy(xx).cuda().view(1,1,x_st.size(2),1).float()
+    yy = torch.from_numpy(xy).cuda().view(1,1,x_st.size(2),1).float()
 
-        return x_st, c_st
+
+    x_st = torch.cat([x_st,xx,yy],1)
+    c_st = torch.cat([c_st,xx,yy],1)
+
+    return x_st, c_st
 
 def rgb_to_yuv(rgb):
     C = torch.Tensor([[0.577350,0.577350,0.577350],[-0.577350,0.788675,-0.211325],[-0.577350,-0.211325,0.788675]]).to(rgb.device)
