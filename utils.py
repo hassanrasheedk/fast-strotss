@@ -152,8 +152,11 @@ def spatial_feature_extract(feat_result, feat_content, xx, xy):
 
         # hack to detect reduced scale
         if i>0 and feat_result[i-1].size(2) > feat_result[i].size(2):
-            xx = xx/2.0
-            xy = xy/2.0
+            # xx = xx/2.0
+            # xy = xy/2.0
+            xx = [x / 2.0 for x in xx]  # Adjust indices for reduced scale
+            xy = [y / 2.0 for y in xy]  # Adjust indices for reduced scale
+
 
         # go back to ints and get residual
         xxm = np.floor(xx).astype(np.float32)
