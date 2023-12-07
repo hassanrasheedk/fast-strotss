@@ -10,6 +10,8 @@ import math
 import PIL
 from utils import *
 
+z_dist = torch.zeros(1).cuda()
+
 def distmat(x, y, cos_d=True):
     if cos_d:
         M = pairwise_distances_cos(x, y)
@@ -36,6 +38,52 @@ def content_loss(feat_result, feat_content):
 
     d = torch.abs(Mx-My).mean()# * X.shape[0]
     return d
+
+def distmat_with_splits(X,Y,h=1.0,cb=0,splits=[128*3+256*3+512*4], cos_d=True):
+    n = X.size(0)
+    m = Y.size(0)
+    M = Variable(torch.zeros(n,m)).cuda()
+
+
+    if 1:
+        cb = 0
+        ce = 0
+        for i in range(len(splits)):
+            if cos_d:
+                ce = cb + splits[i]
+                M = M + pairwise_distances_cos(X[:,cb:ce],Y[:,cb:ce])
+            
+                cb = ce
+            else:
+                ce = cb + splits[i]
+                M = M + torch.sqrt(pairwise_distances_sq_l2(X[:,cb:ce],Y[:,cb:ce]))
+            
+                cb = ce
+
+    return M
+
+
+def style_loss_with_splits(X, Y, h=None, cos_d=True, splits=[3+64+64+128+128+256+256+256+512+512]):
+    d = X.shape[1]
+
+    if d == 3:
+        X = rgb_to_yuv(X.transpose(0,1).contiguous().view(d,-1)).transpose(0,1)
+        Y = rgb_to_yuv(Y.transpose(0,1).contiguous().view(d,-1)).transpose(0,1)
+    else:
+        X = X.transpose(0,1).contiguous().view(d,-1).transpose(0,1)
+        Y = Y.transpose(0,1).contiguous().view(d,-1).transpose(0,1)
+
+    # Relaxed EMD
+    CX_M = distmat_with_splits(X, Y, cos_d=True, splits=splits)
+
+    if d==3: CX_M = CX_M + distmat_with_splits(X, Y, cos_d=False, splits=splits)
+
+    m1, m1_inds = CX_M.min(1)
+    m2, m2_inds = CX_M.min(0)
+
+    remd = torch.max(m1.mean(), m2.mean())
+
+    return remd
 
 def style_loss(X, Y, cos_d=True):
     d = X.shape[1]
@@ -114,14 +162,13 @@ def calculate_loss(feat_result, feat_content, feat_style, xx_dict, xy_dict, yx_d
         spatial_style = feat_style[ri][0].view(1, d, -1, 1)
 
         feat_max = 3+2*64+128*2+256*3+512*2 # (sum of all extracted channels)
-
-        for i in range(3):
-            loss_remd = style_loss(spatial_result[:, :feat_max, :, :], spatial_style[:, :feat_max, :, :])
+        
+        loss_remd = style_loss_with_splits(spatial_result[:, :feat_max, :, :], spatial_style[:, :feat_max, :, :], z_dist, splits=[feat_max])
 
         loss_moment = moment_loss(spatial_result[:,:-2,:,:], spatial_style, moments=[1,2]) # -2 is so that it can fit?
         # palette matching
         content_weight_frac = 1./max(content_weight,1.)
-        loss_moment += content_weight_frac * style_loss(spatial_result[:,:3,:,:], spatial_style[:,:3,:,:])
+        loss_moment += content_weight_frac * style_loss_with_splits(spatial_result[:,:3,:,:], spatial_style[:,:3,:,:], z_dist, splits=[feat_max])
         
         loss_style = loss_remd + moment_weight * loss_moment
         print(f'Style: {loss_style.item():.3f}, Content: {loss_content.item():.3f}')
