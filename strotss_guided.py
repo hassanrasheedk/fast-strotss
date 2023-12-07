@@ -132,6 +132,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     
     # some inner loop that extracts samples
     feat_style = None
+    feat_style_all = []
     for ri in range(len(regions[1])):
         r_temp = regions[1][ri]
         if len(r_temp.shape) > 2:
@@ -143,6 +144,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
             with torch.no_grad():
                 feat_e = extractor.forward_cat(style, r, samps=1000)        
                 feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
+                feat_style_all.append(feat_style)
 
         
     for ri in range(len(regions[0])):
@@ -158,7 +160,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         xx = {}
         xy = {}
 
-        xx_arr, xy_arr = sample_indices(feat_content[0], feat_style, r, ri) # 0 to sample over first layer extracted
+        xx_arr, xy_arr = sample_indices(feat_content[0], feat_style_all, r, ri) # 0 to sample over first layer extracted
         
         try:
             temp = xx[ri]
@@ -184,7 +186,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
 
         feat_result = extractor(stylized)
 
-        loss = calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx, xy, content_weight, regions)
+        loss = calculate_loss(feat_result, feat_content, feat_style_all, feat_guidance, xx, xy, content_weight, regions)
         
         loss.backward()
         optimizer.step()
