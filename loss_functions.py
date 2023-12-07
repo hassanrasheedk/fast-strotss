@@ -90,7 +90,10 @@ def calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx_dict
     # spatial feature extract
     num_locations = 1024
     loss_total = 0.
-    for ri in range(len(xx_dict.keys())):
+
+    num_regions = len(regions[1])
+
+    for ri in range(num_regions):
         xx, xy = get_feature_indices(xx_dict, xy_dict, ri=ri, cnt=num_locations)
         spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx, xy)
 
@@ -100,8 +103,8 @@ def calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx_dict
 
         loss_content = content_loss(spatial_result, spatial_content)
 
-        d = feat_style.shape[1]
-        spatial_style = feat_style.view(1, d, -1, 1)
+        d = feat_style[ri].shape[1]
+        spatial_style = feat_style[ri].view(1, d, -1, 1)
 
         feat_max = 3+2*64+128*2+256*3+512*2 # (sum of all extracted channels)
 
