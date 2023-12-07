@@ -66,21 +66,49 @@ def laplacian(x):
     # x - upsample(downsample(x))
     return x - tensor_resample(tensor_resample(x, [x.shape[2] // 2, x.shape[3] // 2]), [x.shape[2], x.shape[3]])
 
-def make_laplace_pyramid(x, levels):
-    pyramid = []
-    current = x
-    for i in range(levels):
-        pyramid.append(laplacian(current))
-        current = tensor_resample(current, (max(current.shape[2] // 2,1), max(current.shape[3] // 2,1)))
-    pyramid.append(current)
-    return pyramid
+# def make_laplace_pyramid(x, levels):
+#     pyramid = []
+#     current = x
+#     for i in range(levels):
+#         pyramid.append(laplacian(current))
+#         current = tensor_resample(current, (max(current.shape[2] // 2,1), max(current.shape[3] // 2,1)))
+#     pyramid.append(current)
+#     return pyramid
 
-def fold_laplace_pyramid(pyramid):
-    current = pyramid[-1]
-    for i in range(len(pyramid)-2, -1, -1): # iterate from len-2 to 0
-        up_h, up_w = pyramid[i].shape[2], pyramid[i].shape[3]
-        current = pyramid[i] + tensor_resample(current, (up_h,up_w))
-    return current
+# def fold_laplace_pyramid(pyramid):
+#     current = pyramid[-1]
+#     for i in range(len(pyramid)-2, -1, -1): # iterate from len-2 to 0
+#         up_h, up_w = pyramid[i].shape[2], pyramid[i].shape[3]
+#         current = pyramid[i] + tensor_resample(current, (up_h,up_w))
+#     return current
+
+def make_laplace_pyramid(X,levs):
+    pyr = []
+    cur = X
+    for i in range(levs):
+        cur_x = cur.size(2)
+        cur_y = cur.size(3)
+
+        x_small = F.interpolate(cur, (max(cur_x//2,1), max(cur_y//2,1)), mode='bilinear', align_corners=False)
+        x_back  = F.interpolate(x_small, (cur_x,cur_y), mode='bilinear', align_corners=False)
+        lap = cur - x_back
+        pyr.append(lap)
+        cur = x_small
+
+    pyr.append(cur)
+
+    return pyr
+
+def fold_laplace_pyramid(pyr):
+
+    cur = pyr[-1]
+    levs = len(pyr)
+    for i in range(0,levs-1)[::-1]:
+        up_x = pyr[i].size(2)
+        up_y = pyr[i].size(3)
+        cur = pyr[i] + F.interpolate(cur,(up_x,up_y), mode="bilinear", align_corners=False)
+
+    return cur
 
 def sample_indices(feat_content, feat_style_all, r, ri, xx, xy):
 
