@@ -135,10 +135,13 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         
         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
         r = tensor_resample(r_temp,[style.size(3),style.size(2)])[0,0,:,:].numpy()
+        style = style.to(device)
+        sts = [style]
         feat_style = None
         for j in range(5):
+            style_im = sts[np.random.randint(0,len(sts))]
             with torch.no_grad():
-                feat_e = extractor.forward_cat(style, r, samps=1000)  
+                feat_e = extractor.forward_cat(style_im, r, samps=1000)  
                 feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
         feat_style_all.append(feat_style)
 
