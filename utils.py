@@ -311,7 +311,6 @@ def load_style_guidance(extractor,style_im,coords_t,device="cuda:0"):
 
 def load_style_folder(extractor, style_im, regions, ri, n_samps=-1,subsamps=-1,scale=-1, inner=1, cpu_mode=False):
         
-    total_sum = 0.
     z = []
     z_ims = []
     nloaded = 0
@@ -323,7 +322,7 @@ def load_style_folder(extractor, style_im, regions, ri, n_samps=-1,subsamps=-1,s
         r_temp = r_temp[:,:,0]
 
     r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
-    r = F.interpolate(r_temp,(style_im.size(3),style_im.size(2)),mode='bilinear', align_corners=False)[0,0,:,:].numpy()        
+    r = tensor_resample(r_temp,[style_im.size(3),style_im.size(2)])[0,0,:,:].numpy()      
     sts = [style_im]
 
     z_ims.append(style_im)

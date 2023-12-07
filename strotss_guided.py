@@ -155,9 +155,9 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     # some inner loop that extracts samples
     feat_style = None
     for ri in range(len(regions[1])):
-        with torch.no_grad():
-            feat_e = load_style_folder(extractor, style, regions, ri, n_samps=1, subsamps=1000, inner=5)        
-            feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
+        # with torch.no_grad():
+        feat_e = load_style_folder(extractor, style, regions, ri, n_samps=-1, subsamps=1000, inner=5)        
+        feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
 
     if feat_style:
         feat_style = torch.cat(feat_style, dim=2)
@@ -260,7 +260,6 @@ def strotss(content_pil, style_pil, content_path, style_path, regions, coords, c
         # rescale content to current scale
         content = tensor_resample(content_full, [ content_full.shape[2] // scale, content_full.shape[3] // scale ])
         style = tensor_resample(style_full, [ style_full.shape[2] // scale, style_full.shape[3] // scale ])
-        regions_scaled = tensor_resample(regions, [ regions.shape[2] // scale, regions.shape[3] // scale ])
         print(f'Optimizing at resoluton [{content.shape[2]}, {content.shape[3]}]')
 
         # upsample or initialize the result
@@ -275,7 +274,7 @@ def strotss(content_pil, style_pil, content_path, style_path, regions, coords, c
             result = tensor_resample(result, [content.shape[2], content.shape[3]]) + laplacian(content)
 
         # do the optimization on this scale
-        result = optimize(result, content, style, content_path, style_path, scale, content_weight=content_weight, lr=lr, extractor=extractor, coords=coords, use_guidance=use_guidance, regions=regions_scaled)
+        result = optimize(result, content, style, content_path, style_path, scale, content_weight=content_weight, lr=lr, extractor=extractor, coords=coords, use_guidance=use_guidance, regions=regions)
 
         # next scale lower weight
         content_weight /= 2.0
