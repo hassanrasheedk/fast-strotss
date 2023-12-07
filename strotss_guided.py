@@ -108,9 +108,9 @@ class Vgg16_Extractor(nn.Module):
             features = layer_feat[:,:, xx[range(samples)], yy[range(samples)]]
             feat_samples.append(features.clone().detach())
 
-        # feat = [torch.cat([li.contiguous() for li in feat_samples],1)]
+        feat = [torch.cat([li.contiguous() for li in feat_samples],1)]
 
-        feat = torch.cat(feat_samples,1)
+        # feat = torch.cat(feat_samples,1)
         return feat
     
 def optimize(result, content, style, content_path, style_path, scale, content_weight, lr, extractor, coords=0, use_guidance=False, regions=0):
@@ -143,7 +143,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
                 sts = [style]
                 style = sts[np.random.randint(0,len(sts))]
                 feat_e = extractor.forward_cat(style, r, samps=1000)  
-                # feat_e = [li.view(li.size(0),li.size(1),-1,1) for li in feat_e]      
+                feat_e = [li.view(li.size(0),li.size(1),-1,1) for li in feat_e]      
                 feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
         feat_style_all.append(feat_style)
 
