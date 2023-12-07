@@ -119,7 +119,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     opt_iter = 200
 
     # use rmsprop
-    optimizer = optim.Adam(result_pyramid, lr=lr)
+    optimizer = optim.RMSprop(result_pyramid, lr=lr)
 
     # extract features for content
     feat_content = extractor(content) # 
