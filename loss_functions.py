@@ -61,7 +61,7 @@ def style_loss(X, Y, cos_d=True):
 
 def moment_loss(X, Y, moments=[1,2]):
     loss = 0.
-    d = X.size()
+    d = X.size(1)
     # X = X.squeeze().t()
     # Y = Y.squeeze().t()
 
