@@ -82,7 +82,7 @@ def fold_laplace_pyramid(pyramid):
         current = pyramid[i] + tensor_resample(current, (up_h,up_w))
     return current
 
-def sample_indices(feat_content, feat_style_all, r, ri, xx, xy):
+def sample_indices(feat_content, feat_style_all, r, ri, xx, xy, yy):
 
     indices = None
     const = 128**2 # 32k or so
@@ -92,6 +92,8 @@ def sample_indices(feat_content, feat_style_all, r, ri, xx, xy):
     for i in range(len(feat_style)):
         
         feat_cont = feat_content[i]
+        d = feat_style[i].size(1)
+        feat_style_st = feat_style[i].view(1,d,-1,1)
         big_size = feat_cont.shape[2] * feat_cont.shape[3] # num feaxels
 
         stride_x = int(max(math.floor(math.sqrt(big_size//const)),1))
@@ -115,12 +117,16 @@ def sample_indices(feat_content, feat_style_all, r, ri, xx, xy):
         xx[ri].append(xc[:,0])
         xy[ri].append(xc[:,1])
 
-def get_feature_indices(xx_dict, xy_dict, ri=0, i=0, cnt=32**2):
+        feat_result = np.arange(feat_style_st.size(2)).astype(np.int32)
+        yy[ri].append(feat_result)
+
+def get_feature_indices(xx_dict, xy_dict, yy_dict, ri=0, i=0, cnt=32**2):
 
     xx = xx_dict[ri][i][:cnt]
     xy = xy_dict[ri][i][:cnt]
+    yy = yy_dict[ri][i][:cnt]
 
-    return xx, xy
+    return xx, xy, yy
 
     
 def get_guidance_indices(feat_result, coords):
