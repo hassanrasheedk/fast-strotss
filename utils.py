@@ -82,13 +82,16 @@ def fold_laplace_pyramid(pyramid):
         current = pyramid[i] + tensor_resample(current, (up_h,up_w))
     return current
 
-def sample_indices(feat_content, feat_style_all, r, ri):
+def sample_indices(feat_content, feat_style_all, r, ri, xx, xy):
 
     indices = None
     const = 128**2 # 32k or so
 
-    xx_arr = []
-    xy_arr = []
+    try:
+        temp = xx[ri]
+    except:
+        xx[ri] = []
+        xy[ri] = []
 
     feat_style =  feat_style_all[ri]
 
@@ -115,10 +118,8 @@ def sample_indices(feat_content, feat_style_all, r, ri):
             region_mask = region_mask[:,:]
             xc = xc[region_mask[xy[:,0],xx[:,0]], :]
         
-        xx_arr.append(xc[:,0])
-        xy_arr.append(xc[:,1])
-    
-    return xx_arr, xy_arr
+        xx[ri].append(xc[:,0])
+        xy[ri].append(xc[:,1])
 
 def get_feature_indices(xx_dict, xy_dict, ri=0, i=0, cnt=32**2):
 
@@ -136,10 +137,6 @@ def get_guidance_indices(feat_result, coords):
     return xx, xy
 
 def spatial_feature_extract(feat_result, feat_content, xx, xy):
-
-    xx = np.array(xx)
-    xy = np.array(xy)
-
 
     l2, l3 = [], []
     device = feat_result[0].device

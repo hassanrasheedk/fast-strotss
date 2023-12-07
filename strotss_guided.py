@@ -155,19 +155,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         else:
             r = np.greater(r,0.5)
    
-        xx_arr, xy_arr = sample_indices(feat_content, feat_style_all, r, ri) # 0 to sample over first layer extracted
-
-        xx_arr = np.array(xx_arr)
-        xy_arr = np.array(xy_arr)
-
-        try:
-            temp = xx[ri]
-        except:
-            xx[ri] = []
-            xy[ri] = []
-
-        xx[ri].append(xx_arr)
-        xy[ri].append(xy_arr)
+        sample_indices(feat_content, feat_style_all, r, ri, xx, xy) # 0 to sample over first layer extracted
 
     # init indices to optimize over
     # xx, xy = sample_indices(feat_content[0], feat_style) # 0 to sample over first layer extracted
