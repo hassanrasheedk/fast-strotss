@@ -125,10 +125,6 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     feat_content = extractor(content) # 
 
     stylized = fold_laplace_pyramid(result_pyramid)
-    ### Extract guidance features if required ###
-    feat_guidance = np.array([0.])
-    if use_guidance:
-        feat_guidance = load_style_guidance(extractor, style_path, coords[:,2:], scale)
     
     # some inner loop that extracts samples
     feat_style = None
@@ -161,6 +157,9 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
    
         xx_arr, xy_arr = sample_indices(feat_content, feat_style_all, r, ri) # 0 to sample over first layer extracted
 
+        xx_arr = np.array(xx_arr)
+        xy_arr = np.array(xy_arr)
+
         try:
             temp = xx[ri]
         except:
@@ -185,7 +184,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
 
         feat_result = extractor(stylized)
 
-        loss = calculate_loss(feat_result, feat_content, feat_style_all, feat_guidance, xx, xy, content_weight, regions)
+        loss = calculate_loss(feat_result, feat_content, feat_style_all, xx, xy, content_weight, regions)
         
         loss.backward()
         optimizer.step()

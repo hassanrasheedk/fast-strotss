@@ -109,12 +109,6 @@ def sample_indices(feat_content, feat_style_all, r, ri):
 
         region_mask = r
 
-        # Debugging the shapes
-        print(f"Shape of region_mask: {region_mask.shape}")
-        print(f"Shape of xx: {xx.shape}")
-        print(f"Shape of xy: {xy.shape}")
-        print(f"Shape of xc: {xc.shape}")
-
         try:
             xc = xc[region_mask[xy[:,0],xx[:,0]], :]
         except:
