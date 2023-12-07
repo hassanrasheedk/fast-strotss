@@ -116,7 +116,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     result_pyramid = make_laplace_pyramid(result, 5)
     result_pyramid = [l.data.requires_grad_() for l in result_pyramid]
 
-    opt_iter = 250
+    opt_iter = 200
 
     # use rmsprop
     optimizer = optim.RMSprop(result_pyramid, lr=lr)
