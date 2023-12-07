@@ -128,14 +128,6 @@ def get_feature_indices(xx_dict, xy_dict, yy_dict, ri=0, i=0, cnt=32**2):
 
     return xx, xy, yy
 
-    
-def get_guidance_indices(feat_result, coords):
-
-    xx = (coords[:,0]*feat_result.size(2)).astype(np.int64)
-    xy = (coords[:,1]*feat_result.size(3)).astype(np.int64)
-
-    return xx, xy
-
 def spatial_feature_extract(feat_result, feat_content, xx, xy):
 
     l2, l3 = [], []
@@ -252,81 +244,3 @@ def extract_regions(content_path, style_path):
         c_out.append(c_mask)
 
     return [c_out,s_out]
-
-# def extract_regions(content_path, style_path, min_region_size=10000):
-#     s_regions = imread(style_path).transpose(1,0,2)
-#     c_regions = imread(content_path).transpose(1,0,2)
-
-#     color_codes, c1 = np.unique(s_regions.reshape(-1, s_regions.shape[2]), axis=0, return_counts=True)
-#     color_codes = color_codes[c1 > min_region_size]
-
-#     if len(color_codes) == 0:  # No distinct regions found
-#         return [[[1]], [[1]]]  # Default to entire image as one region
-
-#     c_out = []
-#     s_out = []
-
-#     for c in color_codes:
-#         c_expand = np.expand_dims(np.expand_dims(c, 0), 0)
-        
-#         s_mask = np.equal(np.sum(s_regions - c_expand, axis=2), 0).astype(np.float32)
-#         c_mask = np.equal(np.sum(c_regions - c_expand, axis=2), 0).astype(np.float32)
-
-#         s_out.append(s_mask)
-#         c_out.append(c_mask)
-
-#     return [c_out, s_out]
-
-
-
-
-def load_style_guidance(extractor,style_im,coords_t,device="cuda:0"):
-
-    coords = coords_t.copy()
-    coords[:,0]=coords[:,0]*style_im.size(2)
-    coords[:,1]=coords[:,1]*style_im.size(3)
-    coords = coords.astype(np.int64)
-
-    xx = coords[:,0]
-    xy = coords[:,1]
-
-    zt = extractor(style_im)
-    
-    l2 = []
-
-    for i in range(len(zt)):
-
-        temp = zt[i]
-
-        if i>0 and zt[i-1].size(2) > zt[i].size(2):
-            xx = xx/2.0
-            xy = xy/2.0
-
-        xxm = np.floor(xx).astype(np.float32)
-        xxr = xx - xxm
-
-        xym = np.floor(xy).astype(np.float32)
-        xyr = xy - xym
-
-        w00 = torch.from_numpy((1.-xxr)*(1.-xyr)).float().view(1,1,-1,1).to(device)
-        w01 = torch.from_numpy((1.-xxr)*xyr).float().view(1,1,-1,1).to(device)
-        w10 = torch.from_numpy(xxr*(1.-xyr)).float().view(1,1,-1,1).to(device)
-        w11 = torch.from_numpy(xxr*xyr).float().view(1,1,-1,1).to(device)
-
-
-        xxm = np.clip(xxm.astype(np.int32),0,temp.size(2)-1)
-        xym = np.clip(xym.astype(np.int32),0,temp.size(3)-1)
-
-        s00 = xxm*temp.size(3)+xym
-        s01 = xxm*temp.size(3)+np.clip(xym+1,0,temp.size(3)-1)
-        s10 = np.clip(xxm+1,0,temp.size(2)-1)*temp.size(3)+(xym)
-        s11 = np.clip(xxm+1,0,temp.size(2)-1)*temp.size(3)+np.clip(xym+1,0,temp.size(3)-1)
-
-
-        temp = temp.view(1,temp.size(1),temp.size(2)*temp.size(3),1)
-        temp = temp[:,:,s00,:].mul_(w00).add_(temp[:,:,s01,:].mul_(w01)).add_(temp[:,:,s10,:].mul_(w10)).add_(temp[:,:,s11,:].mul_(w11))
-        
-        l2.append(temp)
-    gz = torch.cat([li.contiguous() for li in l2],1)
-
-    return gz
