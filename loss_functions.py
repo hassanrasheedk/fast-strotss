@@ -104,7 +104,7 @@ def calculate_loss(feat_result, feat_content, feat_style, xx_dict, xy_dict, yx_d
     num_locations = 1024
     loss_total = 0.
 
-    for ri in range(len(xx_dict.keys())):
+    for ri in range(len(regions[0])):
         xx, xy, yx = get_feature_indices(xx_dict, xy_dict, yx_dict, ri=ri, cnt=num_locations)
         spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx, xy)
 
@@ -123,7 +123,7 @@ def calculate_loss(feat_result, feat_content, feat_style, xx_dict, xy_dict, yx_d
         loss_moment += content_weight_frac * style_loss(spatial_result[:,:3,:,:], spatial_style[:,:3,:,:])
         
         loss_style = loss_remd + moment_weight * loss_moment
-        # print(f'Style: {loss_style.item():.3f}, Content: {loss_content.item():.3f}')
+        print(f'Style: {loss_style.item():.3f}, Content: {loss_content.item():.3f}')
 
         style_weight = 1.0 + moment_weight
         loss_total += (content_weight * loss_content + loss_style) / (content_weight + style_weight)
