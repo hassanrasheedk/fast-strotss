@@ -313,9 +313,6 @@ def load_style_folder(extractor, style_im, regions, ri, n_samps=-1,subsamps=-1,s
         
     z = []
     z_ims = []
-    nloaded = 0
-
-    nloaded += 1
     
     r_temp = regions[1][ri]
     if len(r_temp.shape) > 2:
