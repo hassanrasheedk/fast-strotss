@@ -165,7 +165,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     for ri in range(len(regions[0])):
         r_temp = regions[0][ri]
         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
-        r = F.interpolate(r_temp,(stylized.size(3),stylized.size(2)),mode='bilinear', align_corners=False)[0,0,:,:].numpy()        
+        r = tensor_resample(r_temp, ([stylized.size(3), stylized.size(2)]))[0,0,:,:].numpy()     
 
         if r.max()<0.1:
             r = np.greater(r+1.,0.5)
@@ -175,7 +175,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         xx = {}
         xy = {}
 
-        xx_arr, xy_arr = sample_indices(feat_content[0], feat_style, r, ri) # 0 to sample over first layer extracted
+        xx_arr, xy_arr = sample_indices(feat_content, feat_style, r, ri) # 0 to sample over first layer extracted
         
         try:
             temp = xx[ri]
