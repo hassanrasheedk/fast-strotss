@@ -137,7 +137,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         
         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
         r = tensor_resample(r_temp,[style.size(3),style.size(2)])[0,0,:,:].numpy()
-        feat_style = None
+        feat_style = []
         for j in range(5):
             with torch.no_grad():
                 sts = [style]
