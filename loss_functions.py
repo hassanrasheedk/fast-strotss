@@ -108,11 +108,17 @@ def calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx_dict
 
     for ri in range(len(xx_dict.keys())):
         xx, xy = get_feature_indices(xx_dict, xy_dict, ri=ri, cnt=num_locations)
-        spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx, xy)
+        print("xx.shape: {}".format(xx.shape))
+        print("xy.shape: {}".format(xy.shape))
+
+        print("xx: {}".format(xx))
+        print("xy: {}".format(xy))
+        
+        spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx, xy, ri)
 
         if feat_guidance.sum() > 0:
             gxx, gyy = get_guidance_indices()
-            g_spatial_result, g_spatial_content = spatial_feature_extract(feat_result, feat_content, gxx, gyy)
+            g_spatial_result, g_spatial_content = spatial_feature_extract(feat_result, feat_content, gxx, gyy, ri)
 
         loss_content = content_loss(spatial_result, spatial_content)
 
