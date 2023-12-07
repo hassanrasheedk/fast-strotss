@@ -141,7 +141,7 @@ def get_guidance_indices(feat_result, coords):
 
     return xx, xy
 
-def spatial_feature_extract(feat_result, feat_content, xx, xy):
+def spatial_feature_extract(feat_result, feat_content, xx_list, xy_list):
     l2, l3 = [], []
     device = feat_result[0].device
 
@@ -149,13 +149,15 @@ def spatial_feature_extract(feat_result, feat_content, xx, xy):
     for i in range(len(feat_result)):
         fr = feat_result[i]
         fc = feat_content[i]
+        xx = xx_list[i]
+        xy = xy_list[i]
 
         # hack to detect reduced scale
         if i>0 and feat_result[i-1].size(2) > feat_result[i].size(2):
-            # xx = xx/2.0
-            # xy = xy/2.0
-            xx = [x / 2.0 for x in xx]  # Adjust indices for reduced scale
-            xy = [y / 2.0 for y in xy]  # Adjust indices for reduced scale
+            xx = xx/2.0
+            xy = xy/2.0
+            # xx = [x / 2.0 for x in xx]  # Adjust indices for reduced scale
+            # xy = [y / 2.0 for y in xy]  # Adjust indices for reduced scale
 
 
         # go back to ints and get residual
