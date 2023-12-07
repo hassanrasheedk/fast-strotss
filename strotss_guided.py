@@ -76,12 +76,10 @@ class Vgg16_Extractor(nn.Module):
         except:
             pass
 
-        # if r.max()<0.1:
-        #     region_mask = np.greater(r.flatten()+1.,0.5)
-        # else:
-        #     region_mask = np.greater(r.flatten(),0.5)
-
-        region_mask = r.flatten()
+        if r.max()<0.1:
+            region_mask = np.greater(r.flatten()+1.,0.5)
+        else:
+            region_mask = np.greater(r.flatten(),0.5)
 
         xx,xy = np.meshgrid(np.arange(X.shape[2]), np.arange(X.shape[3]))
         xx = np.expand_dims(xx.flatten(),1)
@@ -161,10 +159,10 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
         r = tensor_resample(r_temp, ([stylized.size(3), stylized.size(2)]))[0,0,:,:].numpy()     
 
-        # if r.max()<0.1:
-        #     r = np.greater(r+1.,0.5)
-        # else:
-        #     r = np.greater(r,0.5)
+        if r.max()<0.1:
+            r = np.greater(r+1.,0.5)
+        else:
+            r = np.greater(r,0.5)
    
         sample_indices(feat_content, feat_style_all, r, ri, xx, xy, yx) # 0 to sample over first layer extracted
 
