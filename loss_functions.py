@@ -100,8 +100,8 @@ def calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx_dict
 
         loss_content = content_loss(spatial_result, spatial_content)
 
-        d = feat_style[ri][0].shape[1]
-        spatial_style = feat_style[ri][0].view(1, d, -1, 1)
+        d = feat_style.shape[1]
+        spatial_style = feat_style.view(1, d, -1, 1)
 
         feat_max = 3+2*64+128*2+256*3+512*2 # (sum of all extracted channels)
 

@@ -308,29 +308,3 @@ def load_style_guidance(extractor,style_im,coords_t,device="cuda:0"):
     gz = torch.cat([li.contiguous() for li in l2],1)
 
     return gz
-
-def load_style_folder(extractor, style_im, regions, ri, n_samps=-1,subsamps=-1,scale=-1, inner=1, cpu_mode=False):
-        
-    z = []
-    z_ims = []
-    
-    r_temp = regions[1][ri]
-    if len(r_temp.shape) > 2:
-        r_temp = r_temp[:,:,0]
-
-    r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
-    r = tensor_resample(r_temp,[style_im.size(3),style_im.size(2)])[0,0,:,:].numpy()      
-    sts = [style_im]
-
-    z_ims.append(style_im)
-
-    for j in range(inner):
-
-        style_im = sts[np.random.randint(0,len(sts))]
-        
-        with torch.no_grad():
-            zt = extractor.forward_cat(style_im,r,samps=subsamps)
-            
-        zt = [li.view(li.size(0),li.size(1),-1,1) for li in zt]
-
-    return zt

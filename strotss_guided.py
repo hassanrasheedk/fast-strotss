@@ -68,13 +68,8 @@ class Vgg16_Extractor(nn.Module):
         feat = torch.cat(feat_samples,1)
         return feat
     
-    def forward_cat(self, X, r, samps=100, forward_func=None):
-
-        if not forward_func:
-            forward_func = self.forward
-
-        x = X
-        out2 = forward_func(X)
+    def forward_cat(self, X, r, samps=100):
+        feat = self.forward(X)
 
         try:
             r = r[:,:,0]
@@ -86,49 +81,35 @@ class Vgg16_Extractor(nn.Module):
         else:
             region_mask = np.greater(r.flatten(),0.5)
 
-        xx,xy = np.meshgrid(np.array(range(x.size(2))), np.array(range(x.size(3))) )
+        xx,xy = np.meshgrid(np.arange(X.shape[2]), np.arange(X.shape[3]))
         xx = np.expand_dims(xx.flatten(),1)
         xy = np.expand_dims(xy.flatten(),1)
         xc = np.concatenate([xx,xy],1)
-        
+
         xc = xc[region_mask,:]
 
-        const2 = min(samps,xc.shape[0])
+        samples = min(samps,xc.shape[0])
 
+        np.random.shuffle(xc)
+        xx = xc[:samples,0]
+        yy = xc[:samples,1]
 
-        global use_random
-        if use_random:
-            np.random.shuffle(xc)
-        else:
-            xc = xc[::(xc.shape[0]//const2),:]
-
-        xx = xc[:const2,0]
-        yy = xc[:const2,1]
-
-        temp = X
-        temp_list = [ temp[:,:, xx[j], yy[j]].unsqueeze(2).unsqueeze(3) for j in range(const2)]
-        temp = torch.cat(temp_list,2)
-
-        l2 = []
-        for i in range(len(out2)):
-
-            temp = out2[i]
-
-            if i>0 and out2[i].size(2) < out2[i-1].size(2):
+        feat_samples = []
+        for i in range(len(feat)):
+            layer_feat = feat[i]
+            # hack to detect lower resolution
+            if i>0 and feat[i].size(2) < feat[i-1].size(2):
                 xx = xx/2.0
                 yy = yy/2.0
+            
+            xx = np.clip(xx, 0, layer_feat.shape[2]-1).astype(np.int32)
+            yy = np.clip(yy, 0, layer_feat.shape[3]-1).astype(np.int32)
 
-            xx = np.clip(xx,0,temp.size(2)-1).astype(np.int32)
-            yy = np.clip(yy,0,temp.size(3)-1).astype(np.int32)
+            features = layer_feat[:,:, xx[range(samples)], yy[range(samples)]]
+            feat_samples.append(features.clone().detach())
 
-            temp_list = [ temp[:,:, xx[j], yy[j]].unsqueeze(2).unsqueeze(3) for j in range(const2)]
-            temp = torch.cat(temp_list,2)
-
-            l2.append(temp.clone().detach())
-
-        out2 = [torch.cat([li.contiguous() for li in l2],1)]
-
-        return out2
+        feat = torch.cat(feat_samples,1)
+        return feat
     
 def optimize(result, content, style, content_path, style_path, scale, content_weight, lr, extractor, coords=0, use_guidance=False, regions=0):
     # torch.autograd.set_detect_anomaly(True)
@@ -136,8 +117,6 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     result_pyramid = [l.data.requires_grad_() for l in result_pyramid]
 
     opt_iter = 200
-    # if scale == 1:
-    #     opt_iter = 800
 
     # use rmsprop
     optimizer = optim.RMSprop(result_pyramid, lr=lr)
@@ -146,7 +125,6 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     feat_content = extractor(content) # 
 
     stylized = fold_laplace_pyramid(result_pyramid)
-    # let's ignore the regions for now
     ### Extract guidance features if required ###
     feat_guidance = np.array([0.])
     if use_guidance:
@@ -155,15 +133,18 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     # some inner loop that extracts samples
     feat_style = None
     for ri in range(len(regions[1])):
-        # with torch.no_grad():
-        feat_e = load_style_folder(extractor, style, regions, ri, n_samps=-1, subsamps=1000, inner=5)        
-        feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
+        r_temp = regions[1][ri]
+        if len(r_temp.shape) > 2:
+            r_temp = r_temp[:,:,0]
+        
+        r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
+        r = tensor_resample(r_temp,[style.size(3),style.size(2)])[0,0,:,:].numpy()
+        for j in range(5):
+            with torch.no_grad():
+                feat_e = extractor.forward_cat(style, r, samps=1000)        
+                feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
 
-    if feat_style:
-        feat_style = torch.cat(feat_style, dim=2)
-    else:
-        feat_style = torch.tensor([])
-
+        
     for ri in range(len(regions[0])):
         r_temp = regions[0][ri]
         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
