@@ -146,6 +146,13 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     xy = {}
         
     for ri in range(len(regions[0])):
+
+        try:
+            temp = xx[ri]
+        except:
+            xx[ri] = []
+            xy[ri] = []
+
         r_temp = regions[0][ri]
         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
         r = tensor_resample(r_temp, ([stylized.size(3), stylized.size(2)]))[0,0,:,:].numpy()     

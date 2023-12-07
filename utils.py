@@ -87,12 +87,6 @@ def sample_indices(feat_content, feat_style_all, r, ri, xx, xy):
     indices = None
     const = 128**2 # 32k or so
 
-    try:
-        temp = xx[ri]
-    except:
-        xx[ri] = []
-        xy[ri] = []
-
     feat_style =  feat_style_all[ri]
 
     for i in range(len(feat_style)):
