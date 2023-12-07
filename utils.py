@@ -120,8 +120,8 @@ def sample_indices(feat_content, feat_style_all, r, ri):
 
 def get_feature_indices(xx_dict, xy_dict, ri=0, i=0, cnt=32**2):
 
-    xx = xx_dict[ri][:cnt]
-    xy = xy_dict[ri][:cnt]
+    xx = xx_dict[ri][i][:cnt]
+    xy = xy_dict[ri][i][:cnt]
 
     return xx, xy
 
