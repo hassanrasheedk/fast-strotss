@@ -128,8 +128,8 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
     
     # some inner loop that extracts samples
     feat_style_all = []
-    for ri in range(len(regions[1])):
-        r_temp = regions[1][ri]
+    for ri in range(len(regions[0])):
+        r_temp = regions[0][ri]
         if len(r_temp.shape) > 2:
             r_temp = r_temp[:,:,0]
         
