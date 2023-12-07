@@ -87,14 +87,8 @@ def sample_indices(feat_content, feat_style_all, r, ri):
     indices = None
     const = 128**2 # 32k or so
 
-    xx = {}
-    xy = {}
-
-    try:
-        temp = xx[ri]
-    except:
-        xx[ri] = []
-        xy[ri] = []
+    xx_arr = []
+    xy_arr = []
 
     feat_style =  feat_style_all[ri]
 
@@ -126,16 +120,11 @@ def sample_indices(feat_content, feat_style_all, r, ri):
         except:
             region_mask = region_mask[:,:]
             xc = xc[region_mask[xy[:,0],xx[:,0]], :]
-
-        if not isinstance(xx[ri], list):
-            xx[ri] = xx[ri].tolist()
-        if not isinstance(xy[ri], list):
-            xy[ri] = xy[ri].tolist()
         
-        xx[ri].append(xc[:,0])
-        xy[ri].append(xc[:,1])
+        xx_arr.append(xc[:,0])
+        xy_arr.append(xc[:,1])
     
-    return xx, xy
+    return xx_arr, xy_arr
 
 def get_feature_indices(xx_dict, xy_dict, ri=0, i=0, cnt=32**2):
 

@@ -146,6 +146,8 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
                 feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
                 feat_style_all.append(feat_style)
 
+    xx = {}
+    xy = {}
         
     for ri in range(len(regions[0])):
         r_temp = regions[0][ri]
@@ -156,8 +158,17 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
             r = np.greater(r+1.,0.5)
         else:
             r = np.greater(r,0.5)
+   
+        xx_arr, xy_arr = sample_indices(feat_content, feat_style_all, r, ri) # 0 to sample over first layer extracted
 
-        xx, xy = sample_indices(feat_content, feat_style_all, r, ri) # 0 to sample over first layer extracted
+        try:
+            temp = xx[ri]
+        except:
+            xx[ri] = []
+            xy[ri] = []
+
+        xx[ri].append(xx_arr)
+        xy[ri].append(xy_arr)
 
     # init indices to optimize over
     # xx, xy = sample_indices(feat_content[0], feat_style) # 0 to sample over first layer extracted
