@@ -144,7 +144,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
 
     xx = {}
     xy = {}
-    yy = {}
+    yx = {}
         
     for ri in range(len(regions[0])):
 
@@ -153,7 +153,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         except:
             xx[ri] = []
             xy[ri] = []
-            yy[ri] = []
+            yx[ri] = []
 
         r_temp = regions[0][ri]
         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
@@ -164,7 +164,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         else:
             r = np.greater(r,0.5)
    
-        sample_indices(feat_content, feat_style_all, r, ri, xx, xy, yy) # 0 to sample over first layer extracted
+        sample_indices(feat_content, feat_style_all, r, ri, xx, xy, yx) # 0 to sample over first layer extracted
 
     # init indices to optimize over
     # xx, xy = sample_indices(feat_content[0], feat_style) # 0 to sample over first layer extracted
@@ -178,11 +178,11 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
             for ri in xx.keys():
                 np.random.shuffle(xx[ri][0])
                 np.random.shuffle(xy[ri][0])
-                np.random.shuffle(yy[ri][0])
+                np.random.shuffle(yx[ri][0])
 
         feat_result = extractor(stylized)
 
-        loss = calculate_loss(feat_result, feat_content, feat_style_all, xx, xy, yy, content_weight, regions)
+        loss = calculate_loss(feat_result, feat_content, feat_style_all, xx, xy, yx, content_weight, regions)
         
         loss.backward()
         optimizer.step()

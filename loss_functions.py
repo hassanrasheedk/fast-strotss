@@ -99,13 +99,13 @@ def moment_loss(X, Y, moments=[1,2]):
 
     return loss
 
-def calculate_loss(feat_result, feat_content, feat_style, xx_dict, xy_dict, yy_dict, content_weight, regions, moment_weight=1.0):
+def calculate_loss(feat_result, feat_content, feat_style, xx_dict, xy_dict, yx_dict, content_weight, regions, moment_weight=1.0):
     # spatial feature extract
     num_locations = 1024
     loss_total = 0.
 
     for ri in range(len(xx_dict.keys())):
-        xx, xy, yy = get_feature_indices(xx_dict, xy_dict, yy_dict, ri=ri, cnt=num_locations)
+        xx, xy, yx = get_feature_indices(xx_dict, xy_dict, yx_dict, ri=ri, cnt=num_locations)
         spatial_result, spatial_content = spatial_feature_extract(feat_result, feat_content, xx, xy)
 
         loss_content = content_loss(spatial_result, spatial_content)
@@ -120,7 +120,7 @@ def calculate_loss(feat_result, feat_content, feat_style, xx_dict, xy_dict, yy_d
         loss_moment = moment_loss(spatial_result[:,:-2,:,:], spatial_style, moments=[1,2]) # -2 is so that it can fit?
         # palette matching
         content_weight_frac = 1./max(content_weight,1.)
-        loss_moment += content_weight_frac * style_loss(spatial_result[:,:3,:,:], spatial_style[:,:3,:,:])[0]
+        loss_moment += content_weight_frac * style_loss(spatial_result[:,:3,:,:], spatial_style[:,:3,:,:])
         
         loss_style = loss_remd + moment_weight * loss_moment
         # print(f'Style: {loss_style.item():.3f}, Content: {loss_content.item():.3f}')
