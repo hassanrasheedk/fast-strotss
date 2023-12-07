@@ -140,8 +140,8 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         feat_style = None
         for j in range(5):
             with torch.no_grad():
-                # sts = [style]
-                # style = sts[np.random.randint(0,len(sts))]
+                sts = [style]
+                style = sts[np.random.randint(0,len(sts))]
                 feat_e = extractor.forward_cat(style, r, samps=1000)  
                 # feat_e = [li.view(li.size(0),li.size(1),-1,1) for li in feat_e]      
                 feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
