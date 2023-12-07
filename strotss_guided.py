@@ -173,26 +173,19 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         stylized = fold_laplace_pyramid(result_pyramid)
         # original code has resample here, seems pointless with uniform shuffle
         # ...
-        # if it==0 or it%(RESAMPLE_FREQ*10) == 0:
-        #     for ri in range(len(regions[0])):
+        if it==0 or it%(RESAMPLE_FREQ*10) == 0:
+            for ri in range(len(regions[0])):
 
-        #         try:
-        #             temp = xx[ri]
-        #         except:
-        #             xx[ri] = []
-        #             xy[ri] = []
-        #             yy[ri] = []
+                r_temp = regions[0][ri]
+                r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
+                r = tensor_resample(r_temp, ([stylized.size(3), stylized.size(2)]))[0,0,:,:].numpy()     
 
-        #         r_temp = regions[0][ri]
-        #         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
-        #         r = tensor_resample(r_temp, ([stylized.size(3), stylized.size(2)]))[0,0,:,:].numpy()     
-
-        #         if r.max()<0.1:
-        #             r = np.greater(r+1.,0.5)
-        #         else:
-        #             r = np.greater(r,0.5)
+                if r.max()<0.1:
+                    r = np.greater(r+1.,0.5)
+                else:
+                    r = np.greater(r,0.5)
         
-        #         sample_indices(feat_content, feat_style_all, r, ri, xx, xy, yy) # 0 to sample over first layer extracted
+                sample_indices(feat_content, feat_style_all, r, ri, xx, xy, yy) # 0 to sample over first layer extracted
         # also shuffle them every y iter
         if it % 1 == 0 and it != 0:
             for ri in xx.keys():
