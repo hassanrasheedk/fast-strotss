@@ -150,11 +150,6 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
                 feat_e = extractor.forward_cat(style, r, samps=1000)        
                 feat_style = feat_e if feat_style is None else torch.cat((feat_style, feat_e), dim=2)
 
-    # if feat_style:
-    #     feat_style = torch.cat(feat_style, dim=2)
-    # else:
-    #     feat_style = torch.tensor([])
-
     for ri in range(len(regions[0])):
         r_temp = regions[0][ri]
         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
