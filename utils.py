@@ -87,36 +87,50 @@ def sample_indices(feat_content, feat_style_all, r, ri):
     indices = None
     const = 128**2 # 32k or so
 
-    feat_style =  feat_style_all[ri]
-
-    feat_dims = feat_style.shape[1]
-    big_size = feat_content.shape[2] * feat_content.shape[3] # num feaxels
-
-    stride_x = int(max(math.floor(math.sqrt(big_size//const)),1))
-    offset_x = np.random.randint(stride_x)
-    stride_y = int(max(math.ceil(math.sqrt(big_size//const)),1))
-    offset_y = np.random.randint(stride_y)
-    xx, xy = np.meshgrid(np.arange(feat_content.shape[2])[offset_x::stride_x], np.arange(feat_content.shape[3])[offset_y::stride_y])
-
-    xx = np.expand_dims(xx.flatten(),1)
-    xy = np.expand_dims(xy.flatten(),1)
-    xc = np.concatenate([xx,xy], 1)
-
-    region_mask = r
-
-    # Debugging the shapes
-    print(f"Shape of region_mask: {region_mask.shape}")
-    print(f"Shape of xx: {xx.shape}")
-    print(f"Shape of xy: {xy.shape}")
-    print(f"Shape of xc: {xc.shape}")
+    xx = {}
+    xy = {}
 
     try:
-        xc = xc[region_mask[xy[:,0],xx[:,0]], :]
+        temp = xx[ri]
     except:
-        region_mask = region_mask[:,:]
-        xc = xc[region_mask[xy[:,0],xx[:,0]], :]
+        xx[ri] = []
+        xy[ri] = []
+
+    feat_style =  feat_style_all[ri]
+
+    for i in range(len(feat_style)):
+        
+        feat_cont = feat_content[i]
+        big_size = feat_cont.shape[2] * feat_cont.shape[3] # num feaxels
+
+        stride_x = int(max(math.floor(math.sqrt(big_size//const)),1))
+        offset_x = np.random.randint(stride_x)
+        stride_y = int(max(math.ceil(math.sqrt(big_size//const)),1))
+        offset_y = np.random.randint(stride_y)
+        xx, xy = np.meshgrid(np.arange(feat_cont.shape[2])[offset_x::stride_x], np.arange(feat_cont.shape[3])[offset_y::stride_y])
+
+        xx = np.expand_dims(xx.flatten(),1)
+        xy = np.expand_dims(xy.flatten(),1)
+        xc = np.concatenate([xx,xy], 1)
+
+        region_mask = r
+
+        # Debugging the shapes
+        print(f"Shape of region_mask: {region_mask.shape}")
+        print(f"Shape of xx: {xx.shape}")
+        print(f"Shape of xy: {xy.shape}")
+        print(f"Shape of xc: {xc.shape}")
+
+        try:
+            xc = xc[region_mask[xy[:,0],xx[:,0]], :]
+        except:
+            region_mask = region_mask[:,:]
+            xc = xc[region_mask[xy[:,0],xx[:,0]], :]
+        
+        xx[ri].append(xc[:,0])
+        xy[ri].append(xc[:,1])
     
-    return xc[:,0], xc[:,1]
+    return xx, xy
 
 def get_feature_indices(xx_dict, xy_dict, ri=0, i=0, cnt=32**2):
 
