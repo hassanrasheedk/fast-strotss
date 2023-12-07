@@ -171,7 +171,7 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         stylized = fold_laplace_pyramid(result_pyramid)
         # original code has resample here, seems pointless with uniform shuffle
         # ...
-        for ri in range(len(regions[0])):
+        for ri in range(len(xx.keys())):
 
             try:
                 temp = xx[ri]
