@@ -8,6 +8,8 @@ from argparse import ArgumentParser
 from utils import *
 from loss_functions import *
 
+RESAMPLE_FREQ = 1
+
 class Vgg16_Extractor(nn.Module):
     def __init__(self, space):
         super().__init__()
@@ -194,6 +196,31 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         # original code has resample here, seems pointless with uniform shuffle
         # ...
         # also shuffle them every y iter
+        if it==0 or it%(RESAMPLE_FREQ*10) == 0:
+            for ri in range(len(regions[0])):
+                r_temp = regions[0][ri]
+                r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
+                r = tensor_resample(r_temp, ([stylized.size(3), stylized.size(2)]))[0,0,:,:].numpy()     
+
+                if r.max()<0.1:
+                    r = np.greater(r+1.,0.5)
+                else:
+                    r = np.greater(r,0.5)
+
+                xx = {}
+                xy = {}
+
+                xx_arr, xy_arr = sample_indices(feat_content[0], feat_style, r, ri) # 0 to sample over first layer extracted
+                
+                try:
+                    temp = xx[ri]
+                except:
+                    xx[ri] = []
+                    xy[ri] = []
+
+                xx[ri].append(xx_arr)
+                xy[ri].append(xy_arr)
+
         if it % 1 == 0 and it != 0:
             for ri in xx.keys():
                 np.random.shuffle(xx[ri])
@@ -202,8 +229,10 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         feat_result = extractor(stylized)
 
         loss = calculate_loss(feat_result, feat_content, feat_style, feat_guidance, xx, xy, content_weight, regions)
+        
         loss.backward()
         optimizer.step()
+    
     return stylized
 
 
