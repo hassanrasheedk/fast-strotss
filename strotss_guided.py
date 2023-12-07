@@ -328,9 +328,9 @@ if __name__ == "__main__":
         style_mask = create_mask_from_image(style_mask)
     else:
         try:
-            regions = [[imread(args.content)[:,:,0]*0.+1.], [imread(args.style)[:,:,0]*0.+1.]]
+            regions = [[pil_to_np(pil_resize_long_edge_to(pil_loader(args.content), args.resize_to))[:,:,0]*0.+1.], [pil_to_np(pil_resize_long_edge_to(pil_loader(args.style), args.resize_to))[:,:,0]*0.+1.]]
         except:
-            regions = [[imread(args.content)[:,:]*0.+1.], [imread(args.style)[:,:]*0.+1.]]
+            regions = [[pil_to_np(pil_resize_long_edge_to(pil_loader(args.content), args.resize_to))[:,:]*0.+1.], [pil_to_np(pil_resize_long_edge_to(pil_loader(args.style), args.resize_to))[:,:]*0.+1.]]
     
     content_weight = args.weight * 16.0
 
