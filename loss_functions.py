@@ -115,7 +115,8 @@ def calculate_loss(feat_result, feat_content, feat_style, xx_dict, xy_dict, yx_d
 
         feat_max = 3+2*64+128*2+256*3+512*2 # (sum of all extracted channels)
 
-        loss_remd = style_loss(spatial_result[:, :feat_max, :, :], spatial_style[:, :feat_max, :, :])
+        for i in range(3):
+            loss_remd = style_loss(spatial_result[:, :feat_max, :, :], spatial_style[:, :feat_max, :, :])
 
         loss_moment = moment_loss(spatial_result[:,:-2,:,:], spatial_style, moments=[1,2]) # -2 is so that it can fit?
         # palette matching
