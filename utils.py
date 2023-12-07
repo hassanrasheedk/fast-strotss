@@ -112,8 +112,8 @@ def sample_indices(feat_content, feat_style_all, r, ri, xx, xy):
             region_mask = region_mask[:,:]
             xc = xc[region_mask[xy[:,0],xx[:,0]], :]
         
-        xx[ri].append(xc[:,0].to_list())
-        xy[ri].append(xc[:,1].to_list())
+        xx[ri].extend(xc[:,0])
+        xy[ri].extend(xc[:,1])
 
 def get_feature_indices(xx_dict, xy_dict, ri=0, i=0, cnt=32**2):
 
