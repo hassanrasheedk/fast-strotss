@@ -98,11 +98,11 @@ def sample_indices(feat_content, feat_style_all, r, ri, xx, xy):
         offset_x = np.random.randint(stride_x)
         stride_y = int(max(math.ceil(math.sqrt(big_size//const)),1))
         offset_y = np.random.randint(stride_y)
-        xx, xy = np.meshgrid(np.arange(feat_cont.shape[2])[offset_x::stride_x], np.arange(feat_cont.shape[3])[offset_y::stride_y])
+        xx_arr, xy_arr = np.meshgrid(np.arange(feat_cont.shape[2])[offset_x::stride_x], np.arange(feat_cont.shape[3])[offset_y::stride_y])
 
-        xx = np.expand_dims(xx.flatten(),1)
-        xy = np.expand_dims(xy.flatten(),1)
-        xc = np.concatenate([xx,xy], 1)
+        xx_arr = np.expand_dims(xx_arr.flatten(),1)
+        xy_arr = np.expand_dims(xy_arr.flatten(),1)
+        xc = np.concatenate([xx_arr,xy_arr], 1)
 
         region_mask = r
 
@@ -112,8 +112,8 @@ def sample_indices(feat_content, feat_style_all, r, ri, xx, xy):
             region_mask = region_mask[:,:]
             xc = xc[region_mask[xy[:,0],xx[:,0]], :]
         
-        xx[ri].extend(xc[:,0])
-        xy[ri].extend(xc[:,1])
+        xx[ri].append(xc[:,0])
+        xy[ri].append(xc[:,1])
 
 def get_feature_indices(xx_dict, xy_dict, ri=0, i=0, cnt=32**2):
 

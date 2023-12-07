@@ -150,8 +150,8 @@ def optimize(result, content, style, content_path, style_path, scale, content_we
         try:
             temp = xx[ri]
         except:
-            xx.setdefault(ri, [])
-            xy.setdefault(ri, [])
+            xx[ri] = []
+            xy[ri] = []
 
         r_temp = regions[0][ri]
         r_temp = torch.from_numpy(r_temp).unsqueeze(0).unsqueeze(0).contiguous()
