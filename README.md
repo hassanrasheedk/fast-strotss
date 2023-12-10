@@ -1,11 +1,9 @@
 # fast-strotss
-A complete faster version of the original STROTSS
-
-See the original code and links to paper at https://github.com/nkolkin13/STROTSS
+A complete faster version of the original STROTSS based on David Futschik's repo https://github.com/futscdav/strotss and Nick Kolkin's original work https://github.com/nkolkin13/STROTSS.
 
 Usage:
 ```
-python strotss.py <content> <style> [--weight 1.0] [--output strotss.png] [--device "cuda:0"]
+python strotss.py <content> <style> [--weight 1.0] [--output strotss.png] [--device "cuda:0"] [--content_mask <path_to_content_mask>] [--style_mask <path_to_style_mask>]
 ```
 
 <p align="center">
