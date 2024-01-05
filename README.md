@@ -1,5 +1,5 @@
 # fast-strotss
-A complete faster version of the original STROTSS based on David Futschik's repo https://github.com/futscdav/strotss and Nick Kolkin's original work https://github.com/nkolkin13/STROTSS.
+A complete faster version of the STROTSS including mask guidance (based on David Futschik's repo https://github.com/futscdav/strotss and Nick Kolkin's original work https://github.com/nkolkin13/STROTSS).
 
 Usage:
 ```
