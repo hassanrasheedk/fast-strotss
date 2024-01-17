@@ -1,5 +1,5 @@
 # fast-strotss
-A complete faster version of the STROTSS including mask guidance (based on David Futschik's repo https://github.com/futscdav/strotss and Nick Kolkin's original work https://github.com/nkolkin13/STROTSS).
+A complete updated version of the STROTSS including mask guidance (based on David Futschik's repo https://github.com/futscdav/strotss and Nick Kolkin's original work https://github.com/nkolkin13/STROTSS).
 
 The file strotss_guided.py contains the updated code for style guidance.
 
